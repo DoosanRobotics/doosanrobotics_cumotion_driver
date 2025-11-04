@@ -6,7 +6,7 @@ from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
-from dsr_cumotion.msg import TargetPose2
+from dsr_cumotion_msgs.msg import TargetPose
 from dsr_cumotion_goal_interface.executors.pose_executor import PoseExecutor
 from dsr_cumotion_goal_interface.executors.joint_executor import JointExecutor
 from dsr_cumotion_goal_interface.executors.named_executor import NamedExecutor
@@ -91,11 +91,11 @@ class MoveCommandNode(Node):
         }
 
         self.subscription = self.create_subscription(
-            TargetPose2, "/target_pose", self.command_callback, 10, callback_group=self.cb_group
+            TargetPose, "/target_pose", self.command_callback, 10, callback_group=self.cb_group
         )
         self.get_logger().info("[MoveCommandNode] Listening to /target_pose...")
 
-    def command_callback(self, msg: TargetPose2):
+    def command_callback(self, msg: TargetPose):
         move_type = (msg.move_type or "").lower().strip()
         if move_type not in self.executors:
             self.get_logger().error(f"Invalid move_type: {move_type}")

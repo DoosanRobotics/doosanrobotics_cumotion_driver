@@ -171,7 +171,7 @@ def set_urdf_xacro_fn(context):
         "yes",
     ]
     urdf_file = (
-        f"{model}.urdf.xacro" if gripper else f"{model}_with_vgc10.urdf.xacro"
+        f"{model}_with_vgc10.urdf.xacro" if gripper else f"{model}_without_gripper.urdf.xacro"
     )
     xacro_path = os.path.join(
         get_package_share_directory("dsr_cumotion"), "urdf", urdf_file
@@ -326,7 +326,7 @@ def generate_launch_description():
     )
 
     motion_command = Node(
-        package="dsr_motion_command",
+        package="dsr_cumotion_goal_interface",
         executable="move_command_node",
         name="move_command_node",
         output="screen",

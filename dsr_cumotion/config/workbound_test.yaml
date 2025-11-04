@@ -1,0 +1,15 @@
+/**:
+  ros__parameters:
+
+    static_mapper:
+      # All voxels that are fully or partially contained in the bounding box 
+      # defined by the min / max corners are part of the workspace.
+      # The corners are defined in the nvblox `global_frame` (set in ../nvblox_manipulator_base.yaml).
+      # If you want to set it to an infinite workspace, set workspace_bounds_type to "unbounded".
+      workspace_bounds_type: "bounding_box" # ["unbounded", "height_bounds", "bounding_box"]
+      workspace_bounds_min_corner_x_m: -2.0
+      workspace_bounds_min_corner_y_m: -2.0
+      workspace_bounds_min_height_m: 0.0
+      workspace_bounds_max_corner_x_m: 2.0
+      workspace_bounds_max_corner_y_m: 2.0
+      workspace_bounds_max_height_m: 2.0

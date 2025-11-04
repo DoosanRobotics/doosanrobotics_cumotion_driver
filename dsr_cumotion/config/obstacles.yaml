@@ -1,0 +1,13 @@
+objects:
+  - id: box1
+    type: box
+    position: [0.6, 0.0, 0.1]
+    dimensions: [0.2, 0.2, 0.2]
+  - id: sphere1
+    type: sphere
+    position: [0.4, -0.3, 0.1]
+    dimensions: [0.1]  # radius
+  - id: cyl1
+    type: cylinder
+    position: [0.4, 0.3, 0.15]
+    dimensions: [0.05, 0.3]  # radius, height

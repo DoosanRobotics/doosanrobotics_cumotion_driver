@@ -1,0 +1,2 @@
+-v ${HOME}/ros2_ws:/ros2_ws \
+-v /var/run/docker.sock:/var/run/docker.sock 

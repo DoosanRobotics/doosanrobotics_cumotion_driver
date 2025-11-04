@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# Isaac ROS + Doosan Integration Dockerfile (auto build-doosan)
+
+ARG BASE_IMAGE=ros2_humble-image
+FROM ${BASE_IMAGE}
+
+# Environment setup
+ENV ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
+    ROS_DISTRO=humble \
+    DEBIAN_FRONTEND=noninteractive
+
+# bash with pipefail
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Update expired ROS keyring
+RUN rm -f /usr/share/keyrings/ros-archive-keyring.gpg && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+      -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+#  Install dependencies + docker CLI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl git vim wget \
+      libpoco-dev libyaml-cpp-dev dbus-x11 \
+      docker-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Docker
+RUN apt-get update && apt-get install -y ca-certificates curl &&\
+install -m 0755 -d /etc/apt/keyrings &&\
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc &&\
+chmod a+r /etc/apt/keyrings/docker.asc
+RUN echo \
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt-get update &&\
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Copy build script
+COPY scripts/build-doosan.sh /usr/local/bin/scripts/entrypoint_additions/00-build-doosan.user.sh
+RUN chmod +x /usr/local/bin/scripts/entrypoint_additions/00-build-doosan.user.sh
+WORKDIR /workspaces/isaac_ros-dev
+CMD ["/bin/bash"]

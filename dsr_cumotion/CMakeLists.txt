@@ -32,8 +32,6 @@ install(PROGRAMS
   launch/include/move_to_pose.py
   launch/include/camera_publisher.py
   launch/include/obstacle_manager.py
-  examples/simple_move.py
-  examples/joint_move.py
 
   DESTINATION lib/${PROJECT_NAME}
 )

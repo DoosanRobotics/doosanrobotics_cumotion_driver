@@ -7,10 +7,10 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
 from dsr_cumotion.msg import TargetPose2
-from dsr_motion_command.executors.pose_executor import PoseExecutor
-from dsr_motion_command.executors.joint_executor import JointExecutor
-from dsr_motion_command.executors.named_executor import NamedExecutor
-from dsr_motion_command.executors.relative_executor import RelativeExecutor
+from dsr_cumotion_goal_interface.executors.pose_executor import PoseExecutor
+from dsr_cumotion_goal_interface.executors.joint_executor import JointExecutor
+from dsr_cumotion_goal_interface.executors.named_executor import NamedExecutor
+from dsr_cumotion_goal_interface.executors.relative_executor import RelativeExecutor
 
 
 class MoveCommandNode(Node):
@@ -126,7 +126,7 @@ class MoveCommandNode(Node):
             while executor.current_goal_handle is not None:
                 rclpy.spin_once(self, timeout_sec=0.1)
 
-            self.get_logger().info(f"[ExecutorQueue] ✅ Done: {move_type}")
+            self.get_logger().info(f"[ExecutorQueue] Done: {move_type}")
 
 
 def main(args=None):

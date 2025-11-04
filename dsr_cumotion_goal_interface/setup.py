@@ -13,10 +13,12 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='admin',
-    maintainer_email='admin@example.com',
-    description='MoveIt2 command dispatcher (pose/joint/named) with clean reset per command',
-    license='BSD',
+    maintainer='Minsoo Song',
+    maintainer_email='minsoo.song@doosan.com',
+    author='Gijung Nam',
+    author_email='rlwnd0122@gmail.com',
+    description='cuMotion goal interface (pose/joint/named/relative) with clean reset per command',
+    license='Apache 2.0',
     entry_points={
         'console_scripts': [
             'move_command_node = dsr_cumotion_goal_interface.move_command_node:main',

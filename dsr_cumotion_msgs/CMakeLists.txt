@@ -7,7 +7,7 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/TargetPose2.msg"
+  "msg/TargetPose.msg"
   DEPENDENCIES std_msgs
 )
 

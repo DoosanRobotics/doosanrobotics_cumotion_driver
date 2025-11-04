@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import threading
-import queue
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 
 from dsr_cumotion_msgs.msg import TargetPose
 from dsr_cumotion_goal_interface.executors.pose_executor import PoseExecutor
@@ -14,16 +13,15 @@ from dsr_cumotion_goal_interface.executors.relative_executor import RelativeExec
 
 
 class MoveCommandNode(Node):
-    """Main node that subscribes to /target_pose and executes queued motion commands sequentially"""
+    """Simplified MoveCommandNode without queue/thread, executes motion directly on message reception."""
 
     def __init__(self):
         super().__init__("move_command_node")
 
+        # Reentrant callback group allows multiple overlapping MoveIt actions if needed
         self.cb_group = ReentrantCallbackGroup()
-        self.cmd_queue = queue.Queue()
-        self.executor_thread = threading.Thread(target=self._process_queue, daemon=True)
-        self.executor_thread.start()
 
+        # Declare configurable parameters
         self.declare_parameters(
             namespace="",
             parameters=[
@@ -55,6 +53,7 @@ class MoveCommandNode(Node):
             f"vel_scale={default_vel_scale}, acc_scale={default_acc_scale}"
         )
 
+        # Initialize executor mappings
         self.executors = {
             "pose": PoseExecutor(
                 self, group_name, pipeline_id, base_frame, tool_frame,
@@ -90,50 +89,45 @@ class MoveCommandNode(Node):
             ),
         }
 
+        # Use reliable QoS
+        qos_profile = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.RELIABLE)
+
         self.subscription = self.create_subscription(
-            TargetPose, "/target_pose", self.command_callback, 10, callback_group=self.cb_group
+            TargetPose,
+            "/target_pose",
+            self.command_callback,
+            qos_profile,
+            callback_group=self.cb_group,
         )
+
         self.get_logger().info("[MoveCommandNode] Listening to /target_pose...")
 
     def command_callback(self, msg: TargetPose):
         move_type = (msg.move_type or "").lower().strip()
+
         if move_type not in self.executors:
             self.get_logger().error(f"Invalid move_type: {move_type}")
             return
 
-        self.cmd_queue.put(msg)
+        executor = self.executors[move_type]
+        vel_scale = msg.max_vel_scale if msg.max_vel_scale > 0.0 else executor.default_vel_scale
+        acc_scale = msg.max_acc_scale if msg.max_acc_scale > 0.0 else executor.default_acc_scale
+
         self.get_logger().info(
-            f"[Dispatcher] Queued move_type='{move_type}' "
-            f"(vel_scale={msg.max_vel_scale:.2f}, acc_scale={msg.max_acc_scale:.2f}) "
-            f"(queue size={self.cmd_queue.qsize()})"
+            f"[Command] Executing move_type='{move_type}' "
+            f"(vel_scale={vel_scale:.2f}, acc_scale={acc_scale:.2f})"
         )
 
-    def _process_queue(self):
-        while True:
-            msg = self.cmd_queue.get()
-            move_type = msg.move_type.lower().strip()
-            executor = self.executors[move_type]
-
-            vel_scale = msg.max_vel_scale if msg.max_vel_scale > 0.0 else executor.default_vel_scale
-            acc_scale = msg.max_acc_scale if msg.max_acc_scale > 0.0 else executor.default_acc_scale
-
-            self.get_logger().info(
-                f"[ExecutorQueue] Executing {move_type} with vel_scale={vel_scale}, acc_scale={acc_scale}"
-            )
-
-            executor.execute(msg, vel_scale=vel_scale, acc_scale=acc_scale)
-
-            while executor.current_goal_handle is not None:
-                rclpy.spin_once(self, timeout_sec=0.1)
-
-            self.get_logger().info(f"[ExecutorQueue] Done: {move_type}")
-
+        # Directly call the executor
+        executor.execute(msg, vel_scale=vel_scale, acc_scale=acc_scale)
+        self.get_logger().info(f"[Command] Execution finished for: {move_type}")
 
 def main(args=None):
     rclpy.init(args=args)
     node = MoveCommandNode()
     executor = MultiThreadedExecutor()
     executor.add_node(node)
+
     try:
         executor.spin()
     except KeyboardInterrupt:

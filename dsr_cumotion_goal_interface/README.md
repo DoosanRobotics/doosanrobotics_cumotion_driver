@@ -17,7 +17,7 @@ This section describes how to send motion commands to the Doosan robot through t
 ## 3-1. Pose Command (Euler)
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
+ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 "{move_type: 'pose',
   x: 0.0, y: 0.0, z: 0.0,
   rx: 0.0, ry: 0.0, rz: 0.0,
@@ -32,7 +32,7 @@ ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
 ## 3-2. Pose Command (Quaternion)
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
+ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 "{move_type: 'pose',
   x: 0.0, y: 0.0, z: 0.0,
   qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0,
@@ -47,7 +47,7 @@ ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
 ## 3-3. Joint Command
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
+ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 "{move_type: 'joint',
   joints: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
   max_vel_scale: 0.6, max_acc_scale: 0.4}" --once
@@ -61,7 +61,7 @@ ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
 ## 3-4. Named Command (Predefined Pose)
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
+ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 "{move_type: 'named', name: 'HOME',
   max_vel_scale: 0.6, max_acc_scale: 0.5}" --once
 ```
@@ -73,7 +73,7 @@ ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
 ## 3-5. Relative Command (TCP Frame)
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion/TargetPose2 \
+ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 "{move_type: 'relative',
   dx: 0.0, dy: 0.0, dz: 0.0,
   drx: 0.0, dry: 0.0, drz: 0.0,

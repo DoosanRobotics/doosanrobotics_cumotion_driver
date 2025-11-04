@@ -281,7 +281,6 @@
       </visual>
     </link> -->
 
-    <!-- ros_control transmissions & gazebo params -->
     <xacro:dsr_transmission/>
     <xacro:dsr_gazebo namespace="${namespace}"/>
   </xacro:macro>

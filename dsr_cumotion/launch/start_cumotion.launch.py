@@ -34,8 +34,8 @@ def get_moveit_group_node(context):
     controller_file = os.path.join(pkg_share, "config", "moveit_controllers.yaml")
     kinematics_file = os.path.join(pkg_share, "config", "kinematics.yaml")
     joint_limits_file = os.path.join(pkg_share, "config", "joint_limits.yaml")
-    urdf_file = "m1013.urdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_with_vgc10.urdf.xacro"
-    srdf_file = "m1013.srdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_with_vgc10.srdf.xacro"
+    urdf_file = "m1013_with_vgc10.urdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.urdf.xacro"
+    srdf_file = "m1013_with_vgc10.srdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.srdf.xacro"
     urdf_path = os.path.join(pkg_share, "urdf", urdf_file)
     srdf_path = os.path.join(pkg_share, "srdf", srdf_file)
 
@@ -98,7 +98,6 @@ def get_moveit_group_node(context):
             parameters=[moveit_dict, {"use_sim_time": use_sim_bool}],
         )
         nodes.append(rviz_node)
-
     return nodes
 
 # Include CuMotion pipeline (Isaac ROS CuMotion)
@@ -109,13 +108,11 @@ def get_cumotion_node(context):
     enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()
 
     pkg_share = get_package_share_directory("dsr_cumotion")
-    pkg_share2 = get_package_share_directory("dsr_cumotion")
     nodes = []
-
-    urdf = "m1013_gripper_attach.urdf" if gripper in ["true", "1", "yes"] else "m1013_with_vgc10.urdf"
-    xrdf = "m1013_gripper_attach.xrdf" if gripper in ["true", "1", "yes"] else "m1013_with_vgc10.xrdf"
+    urdf = "m1013_with_vgc10.urdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.urdf"
+    xrdf = "m1013_with_vgc10.xrdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.xrdf"
     urdf_path = os.path.join(pkg_share, "urdf", urdf)
-    xrdf_path = os.path.join(pkg_share2, "xrdf", xrdf)
+    xrdf_path = os.path.join(pkg_share, "xrdf", xrdf)
 
     if enable_cumotion in ["true", "1", "yes"]:
         cumotion_launch = IncludeLaunchDescription(
@@ -174,7 +171,7 @@ def set_urdf_xacro_fn(context):
         "yes",
     ]
     urdf_file = (
-        f"{model}.urdf.xacro" if gripper else f"{model}_with_vgc10.urdf.xacro"
+        f"{model}_with_vgc10.urdf.xacro" if gripper else f"{model}_without_gripper.urdf.xacro"
     )
     xacro_path = os.path.join(
         get_package_share_directory("dsr_cumotion"), "urdf", urdf_file
@@ -329,7 +326,7 @@ def generate_launch_description():
     )
 
     motion_command = Node(
-        package="dsr_motion_command",
+        package="dsr_cumotion_goal_interface",
         executable="move_command_node",
         name="move_command_node",
         output="screen",

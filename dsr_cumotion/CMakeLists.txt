@@ -21,19 +21,17 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(isaac_ros_common REQUIRED)
 
 # Message generation
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/TargetPose.msg"
-  "msg/TargetPose2.msg"
-  DEPENDENCIES std_msgs
-)
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   "msg/TargetPose.msg"
+#   "msg/TargetPose2.msg"
+#   DEPENDENCIES std_msgs
+# )
 
 # Python executables
 install(PROGRAMS
   launch/include/move_to_pose.py
   launch/include/camera_publisher.py
   launch/include/obstacle_manager.py
-  examples/simple_move.py
-  examples/joint_move.py
 
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -44,6 +42,7 @@ install(DIRECTORY
   config
   urdf
   srdf
+  xrdf
   meshes
   DESTINATION share/${PROJECT_NAME}
 )

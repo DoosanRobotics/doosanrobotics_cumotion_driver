@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-MoveIt2 Action 상태 모니터링 노드
-- goal 전송 없이 /move_action/status 토픽을 구독
-- 현재 진행 중인 goal 상태(PLANNING, EXECUTING, SUCCEEDED 등)를 출력
-"""
 
 import rclpy
 from rclpy.node import Node
@@ -15,13 +10,12 @@ class MoveItActionStatusMonitor(Node):
     def __init__(self):
         super().__init__('moveit2_status_monitor')
 
-        # ✅ MoveIt Action status 토픽 (환경에 따라 _action 접두사 포함)
         possible_topics = ['/move_action/_action/status']
         for topic in possible_topics:
             self.status_topic = topic
             break
 
-        self.get_logger().info(f'🚀 Subscribing to {self.status_topic}')
+        self.get_logger().info(f' Subscribing to {self.status_topic}')
         self.subscription = self.create_subscription(
             GoalStatusArray,
             self.status_topic,
@@ -76,7 +70,6 @@ def main(args=None):
     except KeyboardInterrupt:
         node.get_logger().info('KeyboardInterrupt received.')
     finally:
-        # shutdown 중복 호출 방지
         if rclpy.ok():
             node.destroy_node()
             rclpy.shutdown()

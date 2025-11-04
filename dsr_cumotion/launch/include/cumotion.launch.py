@@ -156,13 +156,12 @@ def generate_launch_description() -> LaunchDescription:
     gripper = lu.is_true(args.gripper)
 
     if gripper:
-        urdf_file_name = "m1013_gripper_attach.urdf"
-        xrdf_file_name = "m1013_gripper_attach.xrdf"
-        # urdf_file_name = "m1013_with_vgc10.urdf"
-        # xrdf_file_name = "m1013_with_vgc10.xrdf"
-    else:
         urdf_file_name = "m1013_with_vgc10.urdf"
         xrdf_file_name = "m1013_with_vgc10.xrdf"
+
+    else:
+        urdf_file_name = "m1013_without_gripper.urdf"
+        xrdf_file_name = "m1013_without_gripper.xrdf"
 
     default_urdf_file_path = os.path.join(
         get_package_share_directory("dsr_cumotion"), "urdf", urdf_file_name)

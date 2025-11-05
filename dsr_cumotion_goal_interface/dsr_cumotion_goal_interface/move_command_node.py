@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import ReentrantCallbackGroup
-from rclpy.executors import MultiThreadedExecutor
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 
 from dsr_cumotion_msgs.msg import TargetPose
@@ -13,13 +11,10 @@ from dsr_cumotion_goal_interface.executors.relative_executor import RelativeExec
 
 
 class MoveCommandNode(Node):
-    """Simplified MoveCommandNode without queue/thread, executes motion directly on message reception."""
+    """Simplified MoveCommandNode — single-threaded, clean shutdown, direct motion execution."""
 
     def __init__(self):
         super().__init__("move_command_node")
-
-        # Reentrant callback group allows multiple overlapping MoveIt actions if needed
-        self.cb_group = ReentrantCallbackGroup()
 
         # Declare configurable parameters
         self.declare_parameters(
@@ -53,7 +48,7 @@ class MoveCommandNode(Node):
             f"vel_scale={default_vel_scale}, acc_scale={default_acc_scale}"
         )
 
-        # Initialize executor mappings
+        # Initialize executors for different move types
         self.executors = {
             "pose": PoseExecutor(
                 self, group_name, pipeline_id, base_frame, tool_frame,
@@ -89,19 +84,20 @@ class MoveCommandNode(Node):
             ),
         }
 
-        # Use reliable QoS
+        # Reliable QoS ensures guaranteed message delivery
         qos_profile = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.RELIABLE)
 
+        # Simple subscription without callback group
         self.subscription = self.create_subscription(
             TargetPose,
             "/target_pose",
             self.command_callback,
             qos_profile,
-            callback_group=self.cb_group,
         )
 
         self.get_logger().info("[MoveCommandNode] Listening to /target_pose...")
 
+    # Callback: Executes corresponding executor based on move_type
     def command_callback(self, msg: TargetPose):
         move_type = (msg.move_type or "").lower().strip()
 
@@ -110,6 +106,7 @@ class MoveCommandNode(Node):
             return
 
         executor = self.executors[move_type]
+
         vel_scale = msg.max_vel_scale if msg.max_vel_scale > 0.0 else executor.default_vel_scale
         acc_scale = msg.max_acc_scale if msg.max_acc_scale > 0.0 else executor.default_acc_scale
 
@@ -118,22 +115,20 @@ class MoveCommandNode(Node):
             f"(vel_scale={vel_scale:.2f}, acc_scale={acc_scale:.2f})"
         )
 
-        # Directly call the executor
         executor.execute(msg, vel_scale=vel_scale, acc_scale=acc_scale)
         self.get_logger().info(f"[Command] Execution finished for: {move_type}")
 
+
+# Entry point
 def main(args=None):
     rclpy.init(args=args)
     node = MoveCommandNode()
-    executor = MultiThreadedExecutor()
-    executor.add_node(node)
 
     try:
-        executor.spin()
+        rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info("Shutting down MoveCommandNode...")
     finally:
-        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 

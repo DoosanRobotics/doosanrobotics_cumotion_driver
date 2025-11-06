@@ -1,6 +1,8 @@
 # TargetRelative.msg
 # Relative motion command with respect to the current pose (Euler angles)
 
+string reference_frame     # "base" or "tcp" (default: "tcp")
+
 float64 dx                 # Relative translation (m)
 float64 dy
 float64 dz

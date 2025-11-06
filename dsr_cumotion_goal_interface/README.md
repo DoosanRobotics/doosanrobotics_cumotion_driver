@@ -1,88 +1,110 @@
-
----
-
-````markdown
 # Step 3. Command Publishing (Topic / Action)
 
 ## Overview
-This section describes how to send motion commands to the Doosan robot through the `/target_pose` topic.
+This section describes how to send motion commands to the Doosan robot through **dedicated topics** for each motion type.
 
-- **Topic:** `/target_pose`  
-- **Message type:** `dsr_cumotion/TargetPose2`  
-- The command is processed internally by **MoveIt 2 + cuMotion + Doosan Controller**.  
-- `max_vel_scale` and `max_acc_scale` define relative velocity and acceleration scaling (range: 0.0–1.0).
+All commands are internally processed by **MoveIt 2 + cuMotion + Doosan Controller**,  
+and scaling factors (`max_vel_scale`, `max_acc_scale`) adjust the relative velocity and acceleration (range: `0.0–1.0`).
 
 ---
 
 ## 3-1. Pose Command (Euler)
 
-```bash
-ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
-"{move_type: 'pose',
-  x: 0.0, y: 0.0, z: 0.0,
-  rx: 0.0, ry: 0.0, rz: 0.0,
-  max_vel_scale: 0.5, max_acc_scale: 0.4}" --once
-````
-
-* `rx`, `ry`, `rz`: Euler angles (degrees, ZYX order).
-* Use when defining orientation in Euler form.
-
----
-
-## 3-2. Pose Command (Quaternion)
+**Topic:** `/target_pose`  
+**Message type:** `dsr_cumotion_msgs/TargetPose`
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
-"{move_type: 'pose',
-  x: 0.0, y: 0.0, z: 0.0,
-  qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0,
-  max_vel_scale: 0.8, max_acc_scale: 0.6}" --once
+ros2 topic pub /target_pose dsr_cumotion_msgs/msg/TargetPose "{
+  x: 0.35, y: 0.20, z: 0.40,
+  rx: 90.0, ry: 0.0, rz: 180.0,
+  max_vel_scale: 0.5, max_acc_scale: 0.4
+}" --once
 ```
 
-* Define orientation using quaternion values.
-* **Do not mix Euler and quaternion fields.**
+* `rx`, `ry`, `rz`: Euler angles (degrees, ZYX order).  
+* Defines an **absolute pose** in the robot’s base frame.  
+* Use when specifying orientation in Euler form.
 
 ---
 
-## 3-3. Joint Command
+## 3-2. Joint Command
+
+**Topic:** `/target_joint`  
+**Message type:** `dsr_cumotion_msgs/TargetJoint`
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
-"{move_type: 'joint',
-  joints: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-  max_vel_scale: 0.6, max_acc_scale: 0.4}" --once
+ros2 topic pub /target_joint dsr_cumotion_msgs/msg/TargetJoint "{
+  joint_position: [0.0, -90.0, 90.0, 0.0, 90.0, 0.0],
+  max_vel_scale: 0.6,
+  max_acc_scale: 0.4
+}" --once
 ```
 
-* Joint angles are specified in **degrees**.
-* Orientation fields are not required.
+* Joint angles are specified in **degrees** (internally converted to radians).  
+* Represents a **joint-space motion** request.
 
 ---
 
-## 3-4. Named Command (Predefined Pose)
+## 3-3. Named Command (Predefined Pose)
+
+**Topic:** `/target_named`  
+**Message type:** `dsr_cumotion_msgs/TargetNamed`
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
-"{move_type: 'named', name: 'HOME',
-  max_vel_scale: 0.6, max_acc_scale: 0.5}" --once
+ros2 topic pub /target_named dsr_cumotion_msgs/msg/TargetNamed "{
+  target_name: 'home',
+  max_vel_scale: 0.8,
+  max_acc_scale: 0.6
+}" --once
 ```
 
-* Executes a predefined pose (e.g., `HOME`, `SET`).
+* Executes a **predefined named pose** (e.g., `home`, `ready`, `grasp_pre`).  
+* Named targets must be defined in the MoveIt SRDF configuration.
 
 ---
 
-## 3-5. Relative Command (TCP Frame)
+## 3-4. Relative Command (TCP Frame)
+
+**Topic:** `/target_relative`  
+**Message type:** `dsr_cumotion_msgs/TargetRelative`
 
 ```bash
-ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
-"{move_type: 'relative',
-  dx: 0.0, dy: 0.0, dz: 0.0,
+ros2 topic pub /target_relative dsr_cumotion_msgs/msg/TargetRelative "{
+  reference_frame: 'tcp',
+  dx: 0.10, dy: 0.00, dz: 0.00,
   drx: 0.0, dry: 0.0, drz: 0.0,
-  max_vel_scale: 0.5, max_acc_scale: 0.5}" --once
+  max_vel_scale: 0.5,
+  max_acc_scale: 0.5
+}" --once
 ```
 
-* Moves the robot **relative to the current TCP (tool frame)**.
-* `dx`, `dy`, `dz`: translational offsets in meters.
-* `drx`, `dry`, `drz`: rotational offsets in degrees.
+```bash
+ros2 topic pub /target_relative dsr_cumotion_msgs/msg/TargetRelative "{
+  reference_frame: 'base',
+  dx: 0.10, dy: 0.00, dz: 0.00,
+  drx: 0.0, dry: 0.0, drz: 0.0,
+  max_vel_scale: 0.5,
+  max_acc_scale: 0.5
+}" --once
+```
+
+* Moves the robot **relative to the current TCP (tool frame)**.  
+* `dx`, `dy`, `dz`: translational offsets in meters.  
+* `drx`, `dry`, `drz`: rotational offsets in degrees.  
 * Internally converted to an absolute pose in the `base_link` frame before execution.
 
 ---
+
+## Summary
+
+| Motion Type | Topic | Message Type | Description | Units |
+|--------------|--------|---------------|--------------|--------|
+| Pose | `/target_pose` | `TargetPose` | Absolute Cartesian pose command | m / deg |
+| Joint | `/target_joint` | `TargetJoint` | Joint-space command | deg |
+| Named | `/target_named` | `TargetNamed` | Move to predefined named pose | - |
+| Relative | `/target_relative` | `TargetRelative` | Motion relative to current TCP | m / deg |
+
+---
+
+*Each command is handled sequentially by the `MoveCommandNode`,  
+which dispatches it to the appropriate executor (`PoseExecutor`, `JointExecutor`, `NamedExecutor`, `RelativeExecutor`).*

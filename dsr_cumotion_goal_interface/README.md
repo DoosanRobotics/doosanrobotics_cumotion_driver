@@ -63,7 +63,7 @@ ros2 topic pub /target_named dsr_cumotion_msgs/msg/TargetNamed "{
 
 ---
 
-## 3-4. Relative Command (TCP Frame)
+## 3-4. Relative Command
 
 **Topic:** `/target_relative`  
 **Message type:** `dsr_cumotion_msgs/TargetRelative`
@@ -71,7 +71,7 @@ ros2 topic pub /target_named dsr_cumotion_msgs/msg/TargetNamed "{
 ```bash
 ros2 topic pub /target_relative dsr_cumotion_msgs/msg/TargetRelative "{
   reference_frame: 'tcp',
-  dx: 0.10, dy: 0.00, dz: 0.00,
+  dx: 0.0, dy: 0.00, dz: 0.20,
   drx: 0.0, dry: 0.0, drz: 0.0,
   max_vel_scale: 0.5,
   max_acc_scale: 0.5

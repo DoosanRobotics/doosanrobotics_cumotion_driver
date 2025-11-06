@@ -3,7 +3,15 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 
-from dsr_cumotion_msgs.msg import TargetPose
+# Import separated message types
+from dsr_cumotion_msgs.msg import (
+    TargetPose,
+    TargetJoint,
+    TargetNamed,
+    TargetRelative,
+)
+
+# Import executor classes
 from dsr_cumotion_goal_interface.executors.pose_executor import PoseExecutor
 from dsr_cumotion_goal_interface.executors.joint_executor import JointExecutor
 from dsr_cumotion_goal_interface.executors.named_executor import NamedExecutor
@@ -11,7 +19,7 @@ from dsr_cumotion_goal_interface.executors.relative_executor import RelativeExec
 
 
 class MoveCommandNode(Node):
-    """Simplified MoveCommandNode — single-threaded, clean shutdown, direct motion execution."""
+    """MoveCommandNode — handles four motion types with dedicated topics and executors."""
 
     def __init__(self):
         super().__init__("move_command_node")
@@ -32,6 +40,7 @@ class MoveCommandNode(Node):
             ],
         )
 
+        # Read parameter values
         group_name = self.get_parameter("planning_group").value
         pipeline_id = self.get_parameter("planner_pipeline").value
         planner_id = self.get_parameter("planner_id").value
@@ -48,7 +57,7 @@ class MoveCommandNode(Node):
             f"vel_scale={default_vel_scale}, acc_scale={default_acc_scale}"
         )
 
-        # Initialize executors for different move types
+        # Initialize executors for each motion type
         self.executors = {
             "pose": PoseExecutor(
                 self, group_name, pipeline_id, base_frame, tool_frame,
@@ -84,42 +93,63 @@ class MoveCommandNode(Node):
             ),
         }
 
-        # Reliable QoS ensures guaranteed message delivery
         qos_profile = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.RELIABLE)
 
-        # Simple subscription without callback group
-        self.subscription = self.create_subscription(
-            TargetPose,
-            "/target_pose",
-            self.command_callback,
-            qos_profile,
+        self.sub_pose = self.create_subscription(
+            TargetPose, "/target_pose", self.pose_callback, qos_profile
+        )
+        self.sub_joint = self.create_subscription(
+            TargetJoint, "/target_joint", self.joint_callback, qos_profile
+        )
+        self.sub_named = self.create_subscription(
+            TargetNamed, "/target_named", self.named_callback, qos_profile
+        )
+        self.sub_relative = self.create_subscription(
+            TargetRelative, "/target_relative", self.relative_callback, qos_profile
         )
 
-        self.get_logger().info("[MoveCommandNode] Listening to /target_pose...")
+        self.get_logger().info(
+            "[MoveCommandNode] Subscribed to: "
+            "/target_pose, /target_joint, /target_named, /target_relative"
+        )
 
-    # Callback: Executes corresponding executor based on move_type
-    def command_callback(self, msg: TargetPose):
-        move_type = (msg.move_type or "").lower().strip()
 
-        if move_type not in self.executors:
-            self.get_logger().error(f"Invalid move_type: {move_type}")
+    def pose_callback(self, msg: TargetPose):
+        """Execute absolute pose motion."""
+        self._execute("pose", msg, msg.max_vel_scale, msg.max_acc_scale)
+
+    def joint_callback(self, msg: TargetJoint):
+        """Execute joint-space motion."""
+        self._execute("joint", msg, msg.max_vel_scale, msg.max_acc_scale)
+
+    def named_callback(self, msg: TargetNamed):
+        """Execute named target motion."""
+        self._execute("named", msg, msg.max_vel_scale, msg.max_acc_scale)
+
+    def relative_callback(self, msg: TargetRelative):
+        """Execute relative motion."""
+        self._execute("relative", msg, msg.max_vel_scale, msg.max_acc_scale)
+
+
+    def _execute(self, mode: str, msg, vel_scale: float, acc_scale: float):
+        """Common execution handler for all motion types."""
+        if mode not in self.executors:
+            self.get_logger().error(f"Invalid motion type: {mode}")
             return
 
-        executor = self.executors[move_type]
-
-        vel_scale = msg.max_vel_scale if msg.max_vel_scale > 0.0 else executor.default_vel_scale
-        acc_scale = msg.max_acc_scale if msg.max_acc_scale > 0.0 else executor.default_acc_scale
+        executor = self.executors[mode]
+        vel_scale = vel_scale if vel_scale > 0.0 else executor.default_vel_scale
+        acc_scale = acc_scale if acc_scale > 0.0 else executor.default_acc_scale
 
         self.get_logger().info(
-            f"[Command] Executing move_type='{move_type}' "
+            f"[Command] Executing '{mode}' "
             f"(vel_scale={vel_scale:.2f}, acc_scale={acc_scale:.2f})"
         )
 
         executor.execute(msg, vel_scale=vel_scale, acc_scale=acc_scale)
-        self.get_logger().info(f"[Command] Execution finished for: {move_type}")
+        self.get_logger().info(f"[Command] '{mode}' execution completed.")
 
 
-# Entry point
 def main(args=None):
     rclpy.init(args=args)
     node = MoveCommandNode()

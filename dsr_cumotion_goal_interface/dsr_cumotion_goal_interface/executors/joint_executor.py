@@ -28,15 +28,15 @@ class JointExecutor(MoveItExecutorBase):
 
     # Main execution entry
     def execute(self, msg, vel_scale=None, acc_scale=None):
-        """Convert TargetJoint message into MotionPlanRequest and send goal."""
+        """Convert TargetPose (joint type) into MotionPlanRequest and send goal."""
 
-        # Validate joint input (expect 6 joints)
-        if not hasattr(msg, "joint_position") or len(msg.joint_position) != 6:
+        # Validate joint input
+        if not hasattr(msg, "joints") or len(msg.joints) != 6:
             self.node.get_logger().error("Expected 6 joint values (degrees)")
             return False
 
         # Convert from degrees to radians
-        joints_rad = [math.radians(j) for j in msg.joint_position]
+        joints_rad = [math.radians(j) for j in msg.joints]
 
         # Velocity / acceleration scaling
         vel_scale = (

@@ -8,7 +8,10 @@ find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TargetPose.msg"
-  DEPENDENCIES std_msgs
+  "msg/TargetJoint.msg"
+  "msg/TargetNamed.msg"
+  "msg/TargetRelative.msg"
+  DEPENDENCIES builtin_interfaces
 )
 
 ament_export_dependencies(rosidl_default_runtime)

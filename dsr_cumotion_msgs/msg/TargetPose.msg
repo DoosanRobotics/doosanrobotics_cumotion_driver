@@ -1,34 +1,13 @@
-string move_type      # "pose", "joint", "named", or "relative"
+# TargetPose.msg
+# Absolute Cartesian pose command (Euler angles)
 
-# --- Absolute / Relative Position ---
-float32 x
-float32 y
-float32 z
+float64 x                  # Target position (m)
+float64 y
+float64 z
+float64 rx                 # Target orientation (deg) - Roll
+float64 ry                 # Pitch
+float64 rz                 # Yaw
 
-# --- Orientation (either quaternion or euler, one of them can be 0) ---
-float32 qx
-float32 qy
-float32 qz
-float32 qw
-
-float32 rx            # Euler roll (deg)
-float32 ry            # Euler pitch (deg)
-float32 rz            # Euler yaw (deg)
-
-# --- Relative motion offsets (for move_type='relative') ---
-float32 dx            # delta x (m)
-float32 dy            # delta y (m)
-float32 dz            # delta z (m)
-float32 drx           # delta roll (deg)
-float32 dry           # delta pitch (deg)
-float32 drz           # delta yaw (deg)
-
-# --- Joint motion ---
-float32[6] joints
-
-# --- Named target ---
-string name
-
-# --- Vel, Acc scaling factor ---
-float64 max_vel_scale
-float64 max_acc_scale
+# Optional parameters
+float64 max_vel_scale      # Velocity scaling (0.0 ~ 1.0, 0 means default)
+float64 max_acc_scale      # Acceleration scaling (0.0 ~ 1.0, 0 means default)

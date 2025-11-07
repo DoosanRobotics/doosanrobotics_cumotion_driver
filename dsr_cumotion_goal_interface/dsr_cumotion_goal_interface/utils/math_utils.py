@@ -2,6 +2,37 @@
 import math
 import numpy as np
 
+def euler_zyz_to_quaternion(z1: float, y: float, z2: float):
+    """
+    Convert ZYZ Euler angles (radians) to quaternion (x, y, z, w).
+    No external dependencies (pure math version).
+
+    Args:
+        z1: first rotation around Z axis
+        y:  second rotation around Y axis
+        z2: third rotation around Z axis
+
+    Returns:
+        (qx, qy, qz, qw): quaternion components
+    """
+
+    cz1 = math.cos(z1 / 2)
+    sz1 = math.sin(z1 / 2)
+    cy  = math.cos(y  / 2)
+    sy  = math.sin(y  / 2)
+    cz2 = math.cos(z2 / 2)
+    sz2 = math.sin(z2 / 2)
+
+    # Formula for intrinsic Z–Y–Z rotation → quaternion
+    qw = cz1 * cy * cz2 - sz1 * cy * sz2
+    qx = cz1 * sy * sz2 + sz1 * sy * cz2
+    qy = sz1 * sy * sz2 - cz1 * sy * cz2
+    qz = cz1 * cy * sz2 + sz1 * cy * cz2
+
+    return qx, qy, qz, qw
+
+
+
 def euler_to_quaternion(rx: float, ry: float, rz: float):
     """Convert Euler angles (radians) to quaternion (x, y, z, w)."""
     cr = math.cos(rx / 2)
@@ -64,3 +95,4 @@ def _matrix_to_quaternion(R):
             q[1] = (R[1, 2] + R[2, 1]) / s
             q[2] = 0.25 * s
     return q
+

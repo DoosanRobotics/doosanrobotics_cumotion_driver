@@ -9,6 +9,7 @@ from moveit_msgs.msg import (
 from shape_msgs.msg import SolidPrimitive
 from .base_executor import MoveItExecutorBase
 from ..utils.math_utils import euler_to_quaternion
+from ..utils.math_utils import euler_zyz_to_quaternion
 
 
 class PoseExecutor(MoveItExecutorBase):
@@ -47,7 +48,7 @@ class PoseExecutor(MoveItExecutorBase):
 
         # Orientation: prefer Euler if provided, otherwise quaternion
         if hasattr(msg, "rx") and hasattr(msg, "ry") and hasattr(msg, "rz") and (msg.rx or msg.ry or msg.rz):
-            qx, qy, qz, qw = euler_to_quaternion(
+            qx, qy, qz, qw = euler_zyz_to_quaternion(
                 math.radians(msg.rx),
                 math.radians(msg.ry),
                 math.radians(msg.rz),

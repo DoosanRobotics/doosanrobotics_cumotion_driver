@@ -6,6 +6,7 @@ from geometry_msgs.msg import Pose
 from rclpy.time import Time
 from tf2_ros import Buffer, TransformListener, TransformException
 from ..utils.math_utils import (
+    euler_zyz_to_quaternion,
     euler_to_quaternion,
     _quaternion_to_matrix,
     _matrix_to_quaternion,
@@ -85,8 +86,10 @@ class RelativeExecutor(PoseExecutor):
 
             # Apply local rotation offset (if any)
             if abs(drx) > 1e-6 or abs(dry) > 1e-6 or abs(drz) > 1e-6:
-                qx, qy, qz, qw = euler_to_quaternion(
-                    math.radians(drx), math.radians(dry), math.radians(drz)
+                qx, qy, qz, qw = euler_zyz_to_quaternion(
+                    math.radians(drx),
+                    math.radians(dry),
+                    math.radians(drz)
                 )
                 R_delta = _quaternion_to_matrix(qx, qy, qz, qw)
                 R_new = R.dot(R_delta)

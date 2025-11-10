@@ -32,7 +32,7 @@ install(PROGRAMS
   launch/include/move_to_pose.py
   launch/include/camera_publisher.py
   launch/include/obstacle_manager.py
-
+  launch/include/object_attach_client.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -343,6 +343,13 @@ def generate_launch_description():
         }]
     )
 
+    object_attach_node = Node(
+        package="dsr_cumotion",
+        executable="object_attach_client.py",
+        name="object_attach_client",
+        output="screen",
+    )
+
     cumotion = OpaqueFunction(function=get_cumotion_node)
     nvblox = OpaqueFunction(function=get_nvblox_node)
     moveit_group = OpaqueFunction(function=get_moveit_group_node)
@@ -365,5 +372,6 @@ def generate_launch_description():
             TimerAction(period=15.0, actions=[moveit_group]),
             TimerAction(period=20.0, actions=[obstacle]),
             TimerAction(period=20.0, actions=[motion_command]),
+            TimerAction(period=22.0, actions=[object_attach_node]),
         ]
     )

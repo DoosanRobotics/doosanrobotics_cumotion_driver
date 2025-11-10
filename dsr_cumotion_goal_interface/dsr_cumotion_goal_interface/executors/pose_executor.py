@@ -5,8 +5,10 @@ from moveit_msgs.msg import (
     Constraints,
     PositionConstraint,
     OrientationConstraint,
+    RobotState,
 )
 from shape_msgs.msg import SolidPrimitive
+from sensor_msgs.msg import JointState
 from .base_executor import MoveItExecutorBase
 from ..utils.math_utils import euler_to_quaternion
 
@@ -35,7 +37,19 @@ class PoseExecutor(MoveItExecutorBase):
         self.default_vel_scale = default_vel_scale
         self.default_acc_scale = default_acc_scale
 
-    # Main execution entry
+        # Cache the latest joint states to define explicit start_state
+        self.latest_joint_state = None
+        self.joint_state_sub = self.node.create_subscription(
+            JointState,
+            "/joint_states",
+            self._joint_state_callback,
+            10,
+        )
+
+    def _joint_state_callback(self, msg):
+        """Callback to store the most recent joint state for planning start state."""
+        self.latest_joint_state = msg
+
     def execute(self, msg, vel_scale=None, acc_scale=None):
         """Build MotionPlanRequest from pose message and send to MoveIt2."""
 
@@ -90,6 +104,19 @@ class PoseExecutor(MoveItExecutorBase):
         req.num_planning_attempts = int(self.num_planning_attempts)
         req.max_velocity_scaling_factor = float(vel_scale)
         req.max_acceleration_scaling_factor = float(acc_scale)
+
+        # Add explicit start_state if available
+        if self.latest_joint_state:
+            start_state = RobotState()
+            start_state.joint_state = self.latest_joint_state
+            req.start_state = start_state
+            self.node.get_logger().info(
+                f"[PoseExecutor] Using explicit start_state with {len(self.latest_joint_state.name)} joints."
+            )
+        else:
+            self.node.get_logger().warn(
+                "[PoseExecutor] No joint_state received yet — using MoveIt default start state."
+            )
 
         # Position + Orientation constraints
         pos_c = PositionConstraint()

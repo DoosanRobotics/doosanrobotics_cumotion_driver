@@ -1,10 +1,11 @@
 import math
-from moveit_msgs.msg import MotionPlanRequest, Constraints, JointConstraint
+from moveit_msgs.msg import MotionPlanRequest, Constraints, JointConstraint, RobotState
+from sensor_msgs.msg import JointState
 from .base_executor import MoveItExecutorBase
 
 
 class JointExecutor(MoveItExecutorBase):
-    """Executor for joint-based motion commands (simplified & updated)."""
+    """Executor for joint-based motion commands (simplified & updated, with start_state support)."""
 
     def __init__(
         self,
@@ -25,6 +26,19 @@ class JointExecutor(MoveItExecutorBase):
         self.num_planning_attempts = num_planning_attempts
         self.default_vel_scale = default_vel_scale
         self.default_acc_scale = default_acc_scale
+
+        # Subscribe to joint states to build explicit start_state
+        self.latest_joint_state = None
+        self.joint_state_sub = self.node.create_subscription(
+            JointState,
+            "/joint_states",
+            self._joint_state_callback,
+            10,
+        )
+
+    def _joint_state_callback(self, msg):
+        """Callback to store the most recent joint state for planning start state."""
+        self.latest_joint_state = msg
 
     # Main execution entry
     def execute(self, msg, vel_scale=None, acc_scale=None):
@@ -68,6 +82,19 @@ class JointExecutor(MoveItExecutorBase):
         req.num_planning_attempts = int(self.num_planning_attempts)
         req.max_velocity_scaling_factor = float(vel_scale)
         req.max_acceleration_scaling_factor = float(acc_scale)
+
+        # Explicitly set start_state
+        if self.latest_joint_state:
+            start_state = RobotState()
+            start_state.joint_state = self.latest_joint_state
+            req.start_state = start_state
+            self.node.get_logger().info(
+                f"[JointExecutor] Using explicit start_state with {len(self.latest_joint_state.name)} joints."
+            )
+        else:
+            self.node.get_logger().warn(
+                "[JointExecutor] No joint_state received yet — using MoveIt default start state."
+            )
 
         # Add joint constraints
         constraints = Constraints()

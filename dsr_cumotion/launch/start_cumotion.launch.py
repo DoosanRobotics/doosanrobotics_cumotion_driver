@@ -372,6 +372,6 @@ def generate_launch_description():
             TimerAction(period=15.0, actions=[moveit_group]),
             TimerAction(period=20.0, actions=[obstacle]),
             TimerAction(period=20.0, actions=[motion_command]),
-            TimerAction(period=22.0, actions=[object_attach_node]),
+            # TimerAction(period=22.0, actions=[object_attach_node]),
         ]
     )

@@ -64,7 +64,7 @@ def add_cumotion(args: lu.ArgumentContainer) -> List[Action]:
                 'cumotion_planner.max_attempts': args.max_attempts,
                 'cumotion_planner.num_graph_seeds': args.num_graph_seeds,
                 'cumotion_planner.num_trajopt_seeds': args.num_trajopt_seeds,
-                'cumotion_planner.include_trajopt_retract_seed': 'True',
+                'cumotion_planner.include_trajopt_retract_seed':'False',
                 'cumotion_planner.num_trajopt_time_steps': args.num_trajopt_time_steps,
                 'cumotion_planner.interpolation_dt': '0.025',
                 'cumotion_planner.joint_states_topic': args.joint_states_topic,

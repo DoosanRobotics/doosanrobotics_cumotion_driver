@@ -36,8 +36,8 @@ class PoseExecutor(MoveItExecutorBase):
         self.default_acc_scale = default_acc_scale
 
     # Main execution entry
-    def execute(self, msg, vel_scale=None, acc_scale=None):
-        """Build MotionPlanRequest from pose message and send to MoveIt2."""
+    def execute(self, msg, vel_scale=None, acc_scale=None, on_complete=None):
+        """Build MotionPlanRequest from pose message and send to MoveIt2 (async callback ready)."""
 
         # Pose construction
         pose = Pose()
@@ -93,22 +93,22 @@ class PoseExecutor(MoveItExecutorBase):
 
         # Position + Orientation constraints
         pos_c = PositionConstraint()
-        pos_c.header.frame_id = self.base_frame              # Reference frame for the position constraint
-        pos_c.link_name = self.tool_frame                    # Target link to apply the position constraint
-        pos_c.constraint_region.primitives = [               # Define a small 3D region (box) around the target pose
+        pos_c.header.frame_id = self.base_frame
+        pos_c.link_name = self.tool_frame
+        pos_c.constraint_region.primitives = [
             SolidPrimitive(type=SolidPrimitive.BOX, dimensions=[0.001, 0.001, 0.001])
         ]
-        pos_c.constraint_region.primitive_poses = [pose]     # Center the constraint region at the target pose
-        pos_c.weight = 1.0                                   # Importance (weight) of this position constraint
+        pos_c.constraint_region.primitive_poses = [pose]
+        pos_c.weight = 1.0
 
         ori_c = OrientationConstraint()
-        ori_c.header.frame_id = self.base_frame              # Reference frame for the orientation constraint
-        ori_c.link_name = self.tool_frame                    # Target link to apply the orientation constraint
-        ori_c.orientation = pose.orientation                 # Desired orientation for the end-effector
-        ori_c.absolute_x_axis_tolerance = 0.1                # Allowed tolerance around X-axis (radians)
-        ori_c.absolute_y_axis_tolerance = 0.1                # Allowed tolerance around Y-axis (radians)
-        ori_c.absolute_z_axis_tolerance = 0.1                # Allowed tolerance around Z-axis (radians)
-        ori_c.weight = 1.0                                   # Importance (weight) of this orientation constraint
+        ori_c.header.frame_id = self.base_frame
+        ori_c.link_name = self.tool_frame
+        ori_c.orientation = pose.orientation
+        ori_c.absolute_x_axis_tolerance = 0.1
+        ori_c.absolute_y_axis_tolerance = 0.1
+        ori_c.absolute_z_axis_tolerance = 0.1
+        ori_c.weight = 1.0
 
         goal = Constraints(
             position_constraints=[pos_c],
@@ -117,4 +117,6 @@ class PoseExecutor(MoveItExecutorBase):
         req.goal_constraints = [goal]
 
         description = f"Pose move: ({msg.x:.3f}, {msg.y:.3f}, {msg.z:.3f})"
-        return self.send_goal(req, description, vel_scale, acc_scale)
+
+        # ✅ 핵심: on_complete 인자를 send_goal()까지 전달
+        return self.send_goal(req, description, vel_scale, acc_scale, on_complete=on_complete)

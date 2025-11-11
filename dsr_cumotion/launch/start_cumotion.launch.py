@@ -102,7 +102,6 @@ def get_moveit_group_node(context):
 
 # Include CuMotion pipeline (Isaac ROS CuMotion)
 def get_cumotion_node(context):
-    use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     enable_cumotion = str(LaunchConfiguration("enable_cumotion").perform(context)).lower()
     enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()
@@ -125,7 +124,6 @@ def get_cumotion_node(context):
                 "read_esdf_world": "False",
                 "tool_frame": "grasp_frame",
                 "joint_states_topic": "/joint_states",
-                "use_sim_time": str(use_sim_bool),
                 "urdf_file_path": urdf_path,
                 "robot_file_name": xrdf_path,
                 "gripper": gripper,
@@ -231,7 +229,7 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use sim time"),
         DeclareLaunchArgument("gripper", default_value="true", description="GRIPPER"),
         DeclareLaunchArgument("obstacle", default_value="true", description="Obstacle using moveit planningscene"),
-        DeclareLaunchArgument("enable_nvblox", default_value="true", description="Enable nvblox node"),
+        DeclareLaunchArgument("enable_nvblox", default_value="false", description="Enable nvblox node"),
         DeclareLaunchArgument("enable_cumotion", default_value="true", description="Enable cumotion node"),
         DeclareLaunchArgument("enable_attach", default_value="true", description="Enable object_attach node"),
     ]
@@ -267,7 +265,7 @@ def generate_launch_description():
         executable="component_container_mt",
         name="manipulator_container",
         output="screen",
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": False}],
         arguments=["--ros-args", "--log-level", "info"],
     )
 
@@ -358,7 +356,7 @@ def generate_launch_description():
     return LaunchDescription(
         args
         + [
-            manipulator_container,
+            # manipulator_container,
             set_urdf_xacro,
             set_robot_description,
             run_emulator,

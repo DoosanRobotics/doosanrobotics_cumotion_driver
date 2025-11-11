@@ -2,18 +2,19 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from moveit_msgs.action import MoveGroup
-from moveit_msgs.msg import MotionPlanRequest, MoveItErrorCodes
+from moveit_msgs.msg import MoveItErrorCodes
 
 
 class MoveItExecutorBase:
-    """Simplified base class for MoveGroup action communication (cleaned, minimal logging)."""
+    """비동기 방식으로 MoveGroup 액션을 제어하는 기본 실행기 클래스."""
 
     def __init__(
-        self, node: Node,
+        self,
+        node: Node,
         group_name="manipulator",
         pipeline_id="isaac_ros_cumotion",
         base_frame="base_link",
-        tool_frame="grasp_frame"
+        tool_frame="grasp_frame",
     ):
         self.node = node
         self.group_name = group_name
@@ -24,27 +25,36 @@ class MoveItExecutorBase:
         self.client = ActionClient(node, MoveGroup, "move_action")
         self.current_goal_handle = None
 
-    # Internal: Reset and wait helpers
+    # --------------------------
+    # 내부 유틸리티
+    # --------------------------
     def _reset_state(self):
-        """Cancel any existing goal before sending a new one."""
+        """기존 goal을 취소하고 초기화."""
         if self.current_goal_handle:
             try:
                 cancel_future = self.current_goal_handle.cancel_goal_async()
-                cancel_future.add_done_callback(lambda _: self.node.get_logger().info("[Executor] Previous goal canceled."))
+                cancel_future.add_done_callback(
+                    lambda _: self.node.get_logger().info("[Executor] Previous goal canceled.")
+                )
             except Exception as e:
                 self.node.get_logger().warn(f"[Executor] Cancel goal failed: {e}")
         self.current_goal_handle = None
 
     def _wait_for_server(self) -> bool:
-        """Ensure MoveGroup action server is available."""
+        """MoveGroup 서버 연결 대기."""
         if not self.client.wait_for_server(timeout_sec=5.0):
             self.node.get_logger().error("[Executor] MoveGroup server not available (timeout 5s).")
             return False
         return True
 
-    # Public: Goal sending
-    def send_goal(self, request: MotionPlanRequest, description: str, vel_scale=None, acc_scale=None):
-        """Send a motion planning request to MoveGroup action server."""
+    # --------------------------
+    # Goal 전송 (비동기)
+    # --------------------------
+    def send_goal(self, request, description: str, vel_scale=None, acc_scale=None, on_complete=None):
+        """
+        비동기 방식으로 MoveGroup goal 전송.
+        완료되면 on_complete 콜백 호출 (선택사항).
+        """
         self._reset_state()
         if not self._wait_for_server():
             return False
@@ -55,12 +65,13 @@ class MoveItExecutorBase:
         info = f"(vel={vel_scale or 'default'}, acc={acc_scale or 'default'})"
         self.node.get_logger().info(f"[Executor] Sending goal: {description} {info}")
 
-        future = self.client.send_goal_async(goal_msg, feedback_callback=self._on_feedback)
-        future.add_done_callback(lambda f: self._on_goal_response(f, description))
+        send_future = self.client.send_goal_async(goal_msg, feedback_callback=self._on_feedback)
+        send_future.add_done_callback(lambda f: self._on_goal_response_async(f, description, on_complete))
+
         return True
 
-    # Internal callbacks
-    def _on_goal_response(self, future, description: str):
+    def _on_goal_response_async(self, future, description: str, on_complete=None):
+        """Goal 수락 여부 처리."""
         try:
             goal_handle = future.result()
             if not goal_handle.accepted:
@@ -71,20 +82,23 @@ class MoveItExecutorBase:
             self.node.get_logger().info(f"[Executor] Goal accepted: {description}")
 
             result_future = goal_handle.get_result_async()
-            result_future.add_done_callback(lambda f: self._on_result(f, description))
+            result_future.add_done_callback(lambda f: self._on_result_async(f, description, on_complete))
 
         except Exception as e:
             self.node.get_logger().error(f"[Executor] Goal response error: {e}")
 
+    # --------------------------
+    # 피드백 & 결과 콜백
+    # --------------------------
     def _on_feedback(self, feedback_msg):
-        """Handle planning/execution feedback from MoveGroup."""
+        """MoveGroup 실행 중 피드백."""
         fb = feedback_msg.feedback
         state = getattr(fb, "state", None)
         if state:
             self.node.get_logger().info(f"[Feedback] {state}")
 
-    def _on_result(self, future, description: str):
-        """Handle final result from MoveGroup."""
+    def _on_result_async(self, future, description: str, on_complete=None):
+        """최종 결과 처리 및 다음 명령 준비."""
         try:
             result = future.result().result
             code = result.error_code.val
@@ -95,6 +109,9 @@ class MoveItExecutorBase:
             else:
                 self.node.get_logger().warn(f"[Result] FAILED: {description} ({code_name}, code={code})")
 
+            if on_complete:
+                on_complete(code == MoveItErrorCodes.SUCCESS)
+
         except Exception as e:
             self.node.get_logger().error(f"[Result] Exception while handling result: {e}")
 
@@ -102,7 +119,9 @@ class MoveItExecutorBase:
             self.current_goal_handle = None
             self.node.get_logger().info("[Executor] Ready for next goal.")
 
-    # Static utility
+    # --------------------------
+    # 에러 코드 매핑
+    # --------------------------
     @staticmethod
     def _error_code_name(code: int) -> str:
         mapping = {

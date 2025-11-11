@@ -1,0 +1,22 @@
+# =======================
+# Request
+# =======================
+
+int8 mode                # 0: pick (attach), 1: place (detach)
+float32 dx               # relative translation X (m)
+float32 dy               # relative translation Y (m)
+float32 dz               # relative translation Z (m)
+float32 drx              # relative rotation X (deg)
+float32 dry              # relative rotation Y (deg)
+float32 drz              # relative rotation Z (deg)
+float32 vel              # velocity scale (0.0 ~ 1.0)
+float32 acc              # acceleration scale (0.0 ~ 1.0)
+int32 sequence           # number of repetitions (>=1)
+
+---
+# =======================
+# Response
+# =======================
+
+bool success             # true if sequence completed
+string message           # info or error message

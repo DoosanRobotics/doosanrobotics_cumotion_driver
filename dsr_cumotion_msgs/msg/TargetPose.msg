@@ -16,6 +16,8 @@ float32 ry            # Euler pitch (deg)
 float32 rz            # Euler yaw (deg)
 
 # --- Relative motion offsets (for move_type='relative') ---
+string reference_frame     # "base" or "tcp" (default: "tcp")
+
 float32 dx            # delta x (m)
 float32 dy            # delta y (m)
 float32 dz            # delta z (m)

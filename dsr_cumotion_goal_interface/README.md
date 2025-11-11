@@ -86,3 +86,30 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
 * Internally converted to an absolute pose in the `base_link` frame before execution.
 
 ---
+
+ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
+  mode: 0,
+  dx: 0.0,
+  dy: 0.0,
+  dz: -0.10,
+  drx: 0.0,
+  dry: 0.0,
+  drz: 0.0,
+  vel: 0.5,
+  acc: 0.5,
+  sequence: 1
+}"
+
+
+ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
+  mode: 1,
+  dx: 0.0,
+  dy: 0.0,
+  dz: -0.10,
+  drx: 0.0,
+  dry: 0.0,
+  drz: 0.0,
+  vel: 0.5,
+  acc: 0.5,
+  sequence: 1
+}"

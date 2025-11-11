@@ -1,28 +1,22 @@
 objects:
-  # - id: box1
-  #   type: box
-  #   position: [0.6, 0.0, 0.1]
-  #   dimensions: [0.2, 0.2, 0.2]
-  # - id: sphere1
-  #   type: sphere
-  #   position: [0.4, -0.3, 0.1]
-  #   dimensions: [0.1]  # radius
   - id: cyl1
     type: cylinder
     position: [0.55, -0.4, 0.0]
     dimensions: [0.05, 0.8]  # radius, height
+
   - id: cyl2
     type: cylinder
     position: [0.7, 0.1, 0.0]
     dimensions: [0.03, 1.0]  # radius, height
+
   - id: cyl3
     type: cylinder
     position: [0.4, 0.40, 0.0]
     dimensions: [0.04, 0.5]  # radius, height
-  - id: "zig_1"
-    type: "mesh"
-    mesh_resource: "../meshes/zigblend.stl"
-    pose:
-      position: [1.0, 0.0, 0.0]
-      orientation: [0.0, 0.0, 0.0, 1.0]  # quaternion
-    # scale: [0.001, 0.001, 0.001]
+
+  - id: zig_1
+    type: mesh
+    mesh_path: /ros2_ws/src/cumotion/dsr_cumotion/meshes/object/zigblend.stl
+    position: [0.4, 0.2, 0.0]
+    orientation: [0.0, 0.0, 0.0, 1.0]
+    scale: [1.0, 1.0, 1.0]

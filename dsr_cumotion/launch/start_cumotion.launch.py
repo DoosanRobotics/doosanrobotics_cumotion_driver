@@ -341,10 +341,10 @@ def generate_launch_description():
         }]
     )
 
-    object_attach_node = Node(
+    pick_place_server = Node(
         package="dsr_cumotion",
-        executable="object_attach_client.py",
-        name="object_attach_client",
+        executable="pick_and_place_server.py",
+        name="pick_and_place_server",
         output="screen",
     )
 
@@ -360,7 +360,7 @@ def generate_launch_description():
             set_urdf_xacro,
             set_robot_description,
             run_emulator,
-            TimerAction(period=3.0, actions=[control_node]),
+            control_node, 
             robot_state_publisher,
             TimerAction(period=5.0, actions=[joint_state_broadcaster]),
             TimerAction(period=7.0, actions=[dsr_controller]),
@@ -368,8 +368,8 @@ def generate_launch_description():
             TimerAction(period=11.0, actions=[cumotion]),
             TimerAction(period=13.0, actions=[nvblox]),
             TimerAction(period=15.0, actions=[moveit_group]),
+            TimerAction(period=17.0, actions=[motion_command]),
+            TimerAction(period=18.0, actions=[pick_place_server]),
             TimerAction(period=20.0, actions=[obstacle]),
-            TimerAction(period=20.0, actions=[motion_command]),
-            # TimerAction(period=22.0, actions=[object_attach_node]),
         ]
     )

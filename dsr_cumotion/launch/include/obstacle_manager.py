@@ -50,13 +50,13 @@ class ObstacleManager(Node):
         self.scene_pub = self.create_publisher(PlanningScene, "/planning_scene", 10)
         self.remove_sub = self.create_subscription(String, "/collision_remove", self.remove_callback, 10)
 
-        # ✅ Publish once after short delay (to let MoveIt initialize)
+        # Publish once after short delay (to let MoveIt initialize)
         self.timer_once = self.create_timer(2.0, self._once_add_objects)
 
     # ---- Timer callback for one-time publish ----
     def _once_add_objects(self):
         self.add_collision_objects()
-        self.timer_once.cancel()  # ✅ Stop the timer after first publish
+        self.timer_once.cancel()  # stop the timer after first publish
 
     # ---- Add objects ----
     def add_collision_objects(self):
@@ -118,7 +118,6 @@ class ObstacleManager(Node):
                 mesh_path = obj_def.get("mesh_path", obj_def.get("mesh_resource", ""))
                 scale = obj_def.get("scale", [1.0, 1.0, 1.0])
 
-                # ✅ 상대 경로를 config_file 기준 절대경로로 변환
                 if mesh_path and not os.path.isabs(mesh_path):
                     mesh_path = os.path.join(self.config_dir, mesh_path)
                     mesh_path = os.path.normpath(mesh_path)
@@ -143,10 +142,10 @@ class ObstacleManager(Node):
             obj.operation = CollisionObject.ADD
             scene.world.collision_objects.append(obj)
 
-        # ✅ Publish once
+        # Publish once
         if scene.world.collision_objects:
             self.scene_pub.publish(scene)
-            self.get_logger().info(f"✅ Published {len(scene.world.collision_objects)} collision objects to planning scene.")
+            self.get_logger().info(f" Published {len(scene.world.collision_objects)} collision objects to planning scene.")
         else:
             self.get_logger().warn("No valid collision objects to publish.")
 
@@ -172,7 +171,7 @@ class ObstacleManager(Node):
 
         return mesh_msg
 
-    # ---- Remove objects ----
+    # Remove objects
     def remove_callback(self, msg: String):
         data = msg.data.strip()
         scene = PlanningScene()

@@ -85,6 +85,7 @@ class PickPlaceServer(Node):
             self._attach_object_async(False, on_complete=self._on_detach_done)
         time.sleep(1.0)
 
+    # if you want remove ascend move, self._ascend() to self._on_all_done(True)
 
     def _on_attach_done(self, success):
         if not success:
@@ -92,6 +93,7 @@ class PickPlaceServer(Node):
             return
         self.get_logger().info("[PickPlaceServer] Attach complete → Ascending.")
         self._ascend()
+        # self._on_all_done(True)
 
     def _on_detach_done(self, success):
         if not success:
@@ -99,6 +101,7 @@ class PickPlaceServer(Node):
             return
         self.get_logger().info("[PickPlaceServer] Detach complete → Ascending.")
         self._ascend()
+        # self._on_all_done(True)
 
     def _on_all_done(self, success):
         if success:

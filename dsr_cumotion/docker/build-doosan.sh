@@ -16,7 +16,7 @@ fi
 
 # Install essential dependencies (optional)
 echo "[build-doosan] Checking essential dependencies..."
-sudo apt-get updatesudo apt-get update --allow-releaseinfo-change --allow-releaseinfo-change-origin --allow-releaseinfo-change-label -qq || true-qq
+sudo apt-get update --allow-releaseinfo-change --allow-releaseinfo-change-origin --allow-releaseinfo-change-label -qq || true-qq
 sudo apt-get install -y --no-install-recommends \
   libpoco-dev libyaml-cpp-dev wget dbus-x11 \
   ros-${ROS_DISTRO}-control-msgs ros-${ROS_DISTRO}-realtime-tools \

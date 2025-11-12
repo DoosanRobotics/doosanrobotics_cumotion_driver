@@ -40,7 +40,6 @@ elif [ -d "${ISAAC_SRC}" ]; then
   echo "[build-doosan] Isaac install not found — building from source."
   cd "${ISAAC_WS}"
 
-  rosdep update || true
   rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
 
   colcon build --packages-skip nvblox_test_data nvblox_test
@@ -67,10 +66,8 @@ else
   cd "${DOOSAN_WS}"
   if [ -f "${DOOSAN_WS}/install/setup.bash" ]; then
     echo "[build-doosan] Doosan install already present — skipping build."
-    rosdep update || true
-    rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
+
   else
-    rosdep update || true
     rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
 
     colcon build || {

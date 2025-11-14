@@ -16,7 +16,7 @@ objects:
 
   - id: zig_1
     type: mesh
-    mesh_path: /ros2_ws/src/cumotion/dsr_cumotion/meshes/object/zigblend_45.stl
-    position: [0.0, 0.9, 0.0]
-    orientation: [0.0, 0.0, 0.0, 1.0]
-    scale: [1.0, 1.0, 1.0]
+    mesh_path: /ros2_ws/src/cumotion/dsr_cumotion/meshes/object/zig_test.stl
+    position: [1.1, -0.8, -1.0]
+    orientation: [0.0, 0.0, 0.7071068, 0.7071068]
+    scale: [0.001, 0.001, 0.001]

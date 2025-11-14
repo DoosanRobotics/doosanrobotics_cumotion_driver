@@ -68,8 +68,6 @@ else
     echo "[build-doosan] Doosan install already present — skipping build."
 
   else
-    rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
-
     colcon build || {
       echo "[WARN] colcon build failed for some packages — continuing..."
     }

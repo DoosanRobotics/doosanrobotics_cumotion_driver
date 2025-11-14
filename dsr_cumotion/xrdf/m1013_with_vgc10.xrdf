@@ -79,7 +79,7 @@ geometry:
     spheres:
       link_1:
         - center: [0.0, 0.0, -0.04]
-          radius: 0.1
+          radius: 0.0
         - center: [0.0, 0.007, 0.034]
           radius: 0.1
         - center: [0.0, 0.069, 0.001]

@@ -24,13 +24,8 @@ class PickPlaceServer(Node):
         self.cb_group = ReentrantCallbackGroup()  # callback group for async tasks
         self.move_line_cli = self.create_client(MoveLine, "/motion/move_line")  # move_line client
         self.attach_ac = ActionClient(self, AttachObject, "attach_object", callback_group=self.cb_group)  # attach/detach action
-
-        self.srv = self.create_service(
-            PickPlace,
-            "pick_place_command",
-            self.handle_request,
-            callback_group=self.cb_group
-        )  # main service server
+        self.attach_srv = self.create_service(PickPlace,"attach_detach_command",self.handle_attach_detach,callback_group=self.cb_group)
+        self.srv = self.create_service(PickPlace,"pick_place_command",self.handle_request,callback_group=self.cb_group)  # main service server
 
         self.default_mesh_path = "/ros2_ws/src/cumotion/dsr_cumotion/meshes/object/box_7.obj"  # mesh for object
 
@@ -245,6 +240,34 @@ class PickPlaceServer(Node):
         m.color.g = 1.0
         m.color.a = 1.0
         return m
+
+    def handle_attach_detach(self, req, res):
+        # 0 = attach, 1 = detach
+        attach_mode = req.motion_type
+
+        self.get_logger().info(
+            f"[AttachDetach] Received request: mode={attach_mode} "
+            f"({'ATTACH' if attach_mode == 0 else 'DETACH'})"
+        )
+
+        done_future = Future()
+
+        def _cb(ok):
+            if not done_future.done():
+                done_future.set_result(ok)
+
+        if attach_mode == 0:
+            self._attach_object_async(True, _cb)
+        else:
+            self._attach_object_async(False, _cb)
+
+        rclpy.spin_until_future_complete(self, done_future)
+
+        ok = bool(done_future.result())
+        res.success = ok
+        res.message = "Success" if ok else "Failed"
+
+        return res
 
 
 def main(args=None):

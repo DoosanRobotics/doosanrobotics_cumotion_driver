@@ -5,6 +5,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionClient
+from rclpy.task import Future
 from dsr_cumotion_msgs.srv import PickPlace
 from dsr_cumotion_msgs.msg import TargetPose
 from isaac_ros_cumotion_interfaces.action import AttachObject
@@ -13,15 +14,14 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Pose, Vector3
 from dsr_cumotion_goal_interface.executors.relative_executor import RelativeExecutor
 import time
-
 class PickPlaceServer(Node):
-    """Pick & Place – Async Flow + AttachObject integration"""
+    """Pick & Place – synchronous service + async motion callbacks"""
 
     def __init__(self):
         super().__init__("pick_and_place_server")
         self.cb_group = ReentrantCallbackGroup()
 
-        # Motion executor (MoveIt + cuMotion)
+        # Motion executor
         self.relative_executor = RelativeExecutor(
             self,
             group_name="manipulator",
@@ -36,7 +36,9 @@ class PickPlaceServer(Node):
         )
 
         # AttachObject action client
-        self.attach_ac = ActionClient(self, AttachObject, "attach_object", callback_group=self.cb_group)
+        self.attach_ac = ActionClient(
+            self, AttachObject, "attach_object", callback_group=self.cb_group
+        )
 
         # Default mesh
         self.default_mesh_path = "/ros2_ws/src/cumotion/dsr_cumotion/meshes/object/box_7.obj"
@@ -48,70 +50,90 @@ class PickPlaceServer(Node):
 
         self.current_mode = None
         self.request_data = None
-        self.get_logger().info(" PickPlaceServer ready (AttachObject integrated).")
+        self.result_future = None
 
-    # Service entry
+        self.get_logger().info("PickPlaceServer ready (synchronous mode).")
+
+    # SERVICE ENTRY POINT (SYNC)
     def handle_request(self, req: PickPlace.Request, res: PickPlace.Response):
-        """Start async pick/place sequence"""
+        """Wait until pick/place is fully finished."""
+        self.get_logger().info(
+            f"[SERVICE] PickPlace start: mode={req.mode}, dx={req.dx}, dy={req.dy}, dz={req.dz}"
+        )
+
         self.current_mode = req.mode
         self.request_data = req
 
-        dx, dy, dz = req.dx, req.dy, req.dz
-        drx, dry, drz = req.drx, req.dry, req.drz
-        vel, acc = req.vel, req.acc
+        # Future to wait for full sequence completion
+        self.result_future = Future()
 
-        self.get_logger().info(
-            f"[PickPlaceServer] mode={req.mode}, Δ=({dx:.3f},{dy:.3f},{dz:.3f}), "
-            f"rot=({drx:.1f},{dry:.1f},{drz:.1f}), v={vel}, a={acc}"
+        # Start DESCEND first
+        self._send_relative(
+            req.dx, req.dy, req.dz,
+            req.drx, req.dry, req.drz,
+            req.vel, req.acc,
+            label="descend",
+            on_complete=self._on_descend_done
         )
 
-        self._send_relative(dx, dy, dz, drx, dry, drz, vel, acc, "descend", on_complete=self._on_descend_done)
+        # BLOCK until full sequence is done
+        rclpy.spin_until_future_complete(self, self.result_future)
 
-        res.success = True
-        res.message = "Pick/place sequence started (async)."
+        # Get final result
+        success = self.result_future.result()
+
+        res.success = success
+        res.message = "Pick/Place done successfully." if success else "Pick/Place failed."
+
         return res
 
-    # Async callbacks
+    # ASYNC CALLBACK FLOW
     def _on_descend_done(self, success):
         if not success:
-            self.get_logger().warn("[PickPlaceServer] Descend failed.")
+            self._fail_sequence("Descend failed.")
             return
+
+        self.get_logger().info("[STEP] Descend done.")
+
         time.sleep(1.0)
-        if self.current_mode == 0:
-            self.get_logger().info("[PickPlaceServer] Descend complete → Attach object.")
+
+        if self.current_mode == 0:  # Pick
+            self.get_logger().info("[STEP] Pick mode → ATTACH object.")
             self._attach_object_async(True, on_complete=self._on_attach_done)
-        else:
-            self.get_logger().info("[PickPlaceServer] Descend complete → Detach object.")
+        else:  # Place
+            self.get_logger().info("[STEP] Place mode → DETACH object.")
             self._attach_object_async(False, on_complete=self._on_detach_done)
-        time.sleep(1.0)
 
-    # if you want remove ascend move, self._ascend() to self._on_all_done(True)
-
+    # PICK → Attach → Ascend
     def _on_attach_done(self, success):
         if not success:
-            self.get_logger().warn("[PickPlaceServer] Attach failed.")
+            self._fail_sequence("Attach failed.")
             return
-        self.get_logger().info("[PickPlaceServer] Attach complete → Ascending.")
-        self._ascend()
-        # self._on_all_done(True)
+        self.get_logger().info("[STEP] Attach done → Ascend")
+        # self._ascend()
+        self._on_all_done(True)
 
+    # PLACE → Detach → Ascend
     def _on_detach_done(self, success):
         if not success:
-            self.get_logger().warn("[PickPlaceServer] Detach failed.")
+            self._fail_sequence("Detach failed.")
             return
-        self.get_logger().info("[PickPlaceServer] Detach complete → Ascending.")
-        self._ascend()
-        # self._on_all_done(True)
+        self.get_logger().info("[STEP] Detach done → Ascend")
+        # self._ascend()
+        self._on_all_done(True)
 
+    # FINAL STEP → COMPLETE
     def _on_all_done(self, success):
-        if success:
-            self.get_logger().info("[PickPlaceServer] Pick/place sequence completed.")
-        else:
-            self.get_logger().warn("[PickPlaceServer] Sequence finished with errors.")
+        msg = "completed" if success else "failed"
+        self.get_logger().info(f"[STEP] Full sequence {msg}.")
+
+        if not self.result_future.done():
+            self.result_future.set_result(success)
+
         self.current_mode = None
         self.request_data = None
 
-    # Relative move helpers
+    # RELATIVE MOTION helper
     def _send_relative(self, dx, dy, dz, drx, dry, drz, vel, acc, label, on_complete):
         msg = TargetPose()
         msg.move_type = "relative"
@@ -119,20 +141,37 @@ class PickPlaceServer(Node):
         msg.drx, msg.dry, msg.drz = drx, dry, drz
         msg.max_vel_scale = vel
         msg.max_acc_scale = acc
-        desc = f"{label}: Δ=({dx:.3f},{dy:.3f},{dz:.3f}), rot=({drx:.1f},{dry:.1f},{drz:.1f})"
-        self.relative_executor.execute(msg, vel_scale=vel, acc_scale=acc, on_complete=on_complete)
 
+        self.get_logger().info(
+            f"[MOVE] {label}: Δ=({dx:.3f},{dy:.3f},{dz:.3f}), rot=({drx:.2f},{dry:.2f},{drz:.2f})"
+        )
+
+        self.relative_executor.execute(
+            msg,
+            vel_scale=vel,
+            acc_scale=acc,
+            on_complete=on_complete
+        )
+
+    # ASCEND
     def _ascend(self):
         req = self.request_data
+
         dx, dy, dz = -req.dx, -req.dy, -req.dz
         drx, dry, drz = -req.drx, -req.dry, -req.drz
-        vel, acc = req.vel, req.acc
-        self._send_relative(dx, dy, dz, drx, dry, drz, vel, acc, "ascend", on_complete=self._on_all_done)
 
-    # AttachObject integration 
+        self._send_relative(
+            dx, dy, dz,
+            drx, dry, drz,
+            req.vel, req.acc,
+            label="ascend",
+            on_complete=self._on_all_done
+        )
+
+    # ATTACH / DETACH
     def _attach_object_async(self, attach: bool, on_complete):
         if not self.attach_ac.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error("AttachObject action server not available.")
+            self.get_logger().error("AttachObject server unavailable.")
             on_complete(False)
             return
 
@@ -140,38 +179,44 @@ class PickPlaceServer(Node):
         goal.attach_object = AttachState.ATTACH.value if attach else AttachState.DETACH.value
         goal.fallback_radius = 0.15
         goal.object_config = self._make_marker("grasp_frame", self.default_mesh_path)
-        action_type = "ATTACH" if attach else "DETACH"
-        self.get_logger().info(f"[{action_type}] Sending goal to AttachObject...")
 
-        # send goal async + result callback
+        action_name = "ATTACH" if attach else "DETACH"
+        self.get_logger().info(f"[ACTION] Sending {action_name} goal...")
+
         future = self.attach_ac.send_goal_async(goal)
-        future.add_done_callback(lambda f: self._on_goal_sent(f, action_type, on_complete))
+        future.add_done_callback(lambda f: self._on_goal_sent(f, action_name, on_complete))
 
-    def _on_goal_sent(self, future, action_type, on_complete):
+    def _on_goal_sent(self, future, action_name, on_complete):
         try:
             goal_handle = future.result()
-            if not goal_handle or not goal_handle.accepted:
-                self.get_logger().warn(f"[{action_type}] Goal rejected.")
+            if not goal_handle.accepted:
+                self.get_logger().warn(f"[{action_name}] Goal rejected.")
                 on_complete(False)
                 return
-
             result_future = goal_handle.get_result_async()
-            result_future.add_done_callback(lambda f: self._on_attach_result(f, action_type, on_complete))
+            result_future.add_done_callback(lambda f: self._on_action_result(f, action_name, on_complete))
         except Exception as e:
-            self.get_logger().error(f"[{action_type}] Goal error: {e}")
+            self.get_logger().error(f"[{action_name}] Goal error: {e}")
             on_complete(False)
 
-    def _on_attach_result(self, future, action_type, on_complete):
+    def _on_action_result(self, future, action_name, on_complete):
         try:
             result = future.result().result
             outcome = getattr(result, "outcome", None)
-            self.get_logger().info(f"[{action_type}] Result outcome: {outcome}")
+            self.get_logger().info(f"[{action_name}] outcome={outcome}")
             on_complete(True)
         except Exception as e:
-            self.get_logger().error(f"[{action_type}] Result error: {e}")
+            self.get_logger().error(f"[{action_name}] Result error: {e}")
             on_complete(False)
 
-    # Marker for object_config
+    # util
+    def _fail_sequence(self, reason):
+        self.get_logger().warn(f"[FAIL] {reason}")
+        if self.result_future and not self.result_future.done():
+            self.result_future.set_result(False)
+        self.current_mode = None
+        self.request_data = None
+
     def _make_marker(self, frame_id, mesh_path):
         marker = Marker()
         marker.header.frame_id = frame_id

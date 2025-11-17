@@ -7,6 +7,8 @@ from rclpy.task import Future
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionClient
 
+from action_msgs.msg import GoalStatusArray
+
 from dsr_cumotion_msgs.srv import PickPlace
 from dsr_msgs2.srv import MoveLine
 from isaac_ros_cumotion_interfaces.action import AttachObject
@@ -14,8 +16,7 @@ from isaac_manipulator_ros_python_utils.types import AttachState
 
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Pose, Vector3
-
-
+import time
 class PickPlaceServer(Node):
     def __init__(self):
         super().__init__("pick_place_server")
@@ -38,14 +39,81 @@ class PickPlaceServer(Node):
         self.req_data = None            # saved request
         self.motion_args = None         # saved motion parameters
 
+
+        self.moveit_status_topic = "/move_action/_action/status"
+        self.moveit_last_status = None        # last_state
+        self.moveit_wait_future = None        # MoveIt standby Future
+
+        self.moveit_status_sub = self.create_subscription(
+            GoalStatusArray,
+            self.moveit_status_topic,
+            self._moveit_status_callback,
+            10
+        )
+
+        self.get_logger().info(f"Subscribing MoveIt status: {self.moveit_status_topic}")
+
+    def _moveit_status_callback(self, msg: GoalStatusArray):
+        if not msg.status_list:
+            self.moveit_last_status = None
+            return
+
+        last_status = msg.status_list[-1]
+        code = last_status.status
+        self.moveit_last_status = code
+
+        if self.moveit_wait_future is not None and not self.moveit_wait_future.done():
+            # SUCCEEDED
+            if code == 4:
+                self.moveit_wait_future.set_result(True)
+            elif code in (5, 6):
+                self.moveit_wait_future.set_result(False)
+
+    def _wait_moveit_succeeded(self, timeout_sec: float = None) -> bool:
+
+        if self.moveit_last_status is None:
+            self.get_logger().info("[PickPlace] No active MoveIt goal. Proceed immediately.")
+            return True
+
+        if self.moveit_last_status == 4:
+            self.get_logger().info("[PickPlace] Last MoveIt goal already SUCCEEDED. Proceed.")
+            return True
+
+        if self.moveit_last_status in (5, 6):
+            self.get_logger().warn(f"[PickPlace] Last MoveIt goal ended with status={self.moveit_last_status} (not SUCCEEDED).")
+            return False
+
+        self.get_logger().info(f"[PickPlace] Waiting for MoveIt to finish (current status={self.moveit_last_status})...")
+
+        self.moveit_wait_future = Future()
+        rclpy.spin_until_future_complete(self, self.moveit_wait_future, timeout_sec=timeout_sec)
+
+        if not self.moveit_wait_future.done():
+            self.get_logger().warn("[PickPlace] Timeout while waiting for MoveIt to SUCCEED.")
+            return False
+
+        result = bool(self.moveit_wait_future.result())
+        if result:
+            self.get_logger().info("[PickPlace] MoveIt goal SUCCEEDED. Start pick/place.")
+        else:
+            self.get_logger().warn("[PickPlace] MoveIt goal finished but not SUCCEEDED.")
+        return result
+
+    # Pick/Place 서비스
     def handle_request(self, req, res):
+
+        if not self._wait_moveit_succeeded(timeout_sec=60.0):
+            res.success = False
+            res.message = "MoveIt goal did not finish with SUCCEEDED."
+            return res
+
         self.current_mode = req.motion_type  # store mode
         self.req_data = req  # store request
         self.result_future = Future()  # future to return result
 
         self._start_cycle()  # start first step
 
-        rclpy.spin_until_future_complete(self, self.result_future)  # wait until done
+        rclpy.spin_until_future_complete(self, self.result_future)
 
         success = self.result_future.result()  # get result
         res.success = success
@@ -65,17 +133,12 @@ class PickPlaceServer(Node):
             "vel": req.vel, "acc": req.acc,
             "ref": req.ref, "mv_mode": req.mv_mode
         }
-
+        time.sleep(0.5)
         # send descend motion
         self._call_move_line(dx, dy, dz, req.drx, req.dry, req.drz,
                              req.vel, req.acc, req.ref, req.mv_mode,
                              self._on_descend_done)
 
-        # if self.current_mode == 0:
-        #     self._attach_object_async(True, self._finish)
-        # else:
-        #     self._attach_object_async(False, self._finish)
-            
     def _on_descend_done(self, ok):
         if not ok:
             self._finish(False)  # stop if fail
@@ -90,8 +153,9 @@ class PickPlaceServer(Node):
         if not ok:
             self._finish(False)
             return
-        # self._ascend()
-        self._finish(True)  # success without ascend
+        time.sleep(0.5)
+        self._ascend()
+        # self._finish(True)  # success without ascend
 
     def _on_detach_done(self, ok):
         if not ok:
@@ -130,7 +194,7 @@ class PickPlaceServer(Node):
         try:
             result = future.result()  # response
             cb(result.success)
-        except:
+        except Exception:
             cb(False)
 
     def _attach_object_async(self, attach, cb):
@@ -155,14 +219,14 @@ class PickPlaceServer(Node):
 
             result_future = handle.get_result_async()  # wait result
             result_future.add_done_callback(lambda f: self._on_attach_result(f, cb))
-        except:
+        except Exception:
             cb(False)
 
     def _on_attach_result(self, future, cb):
         try:
             _ = future.result().result  # result OK
             cb(True)
-        except:
+        except Exception:
             cb(False)
 
     def _finish(self, ok):

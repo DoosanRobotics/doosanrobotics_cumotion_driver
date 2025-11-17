@@ -45,7 +45,7 @@ def get_moveit_group_node(context):
         .robot_description(file_path=urdf_path)
         .robot_description_semantic(file_path=srdf_path)
         .robot_description_kinematics(file_path=kinematics_file)
-        .joint_limits(file_path=joint_limits_file)
+        # .joint_limits(file_path=joint_limits_file)
         .trajectory_execution(file_path=controller_file)
         .to_moveit_configs()
     )

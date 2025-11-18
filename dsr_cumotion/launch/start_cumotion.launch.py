@@ -117,10 +117,10 @@ def get_cumotion_node(context):
         cumotion_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(pkg_share, "launch", "include", "cumotion.launch.py")),
             launch_arguments={
-                "camera_type": "isaac_sim",
+                "camera_type": "ISAAC_SIM",
                 "num_cameras": "1",
                 "workspace_bounds_name": "workbound_test",
-                "enable_object_attachment": enable_attach,
+                "enable_object_attachment": "false",
                 "read_esdf_world": "False",
                 "tool_frame": "grasp_frame",
                 "joint_states_topic": "/joint_states",
@@ -235,6 +235,27 @@ def generate_launch_description():
     ]
 
     set_urdf_xacro = OpaqueFunction(function=set_urdf_xacro_fn)
+
+    # Run set_config
+    set_config_node = Node(
+        package="dsr_bringup2",
+        executable="set_config",
+        namespace=LaunchConfiguration('name'),
+        parameters=[{
+            "name": LaunchConfiguration('name'),
+            "rate": 100,
+            "standby": 5000,
+            "command": True,
+            "host": LaunchConfiguration('host'),
+            "port": LaunchConfiguration('port'),
+            "mode": LaunchConfiguration('mode'),
+            "model": LaunchConfiguration('model'),
+            "gripper": str('none'),
+            "mobile": "none",
+            "rt_host": LaunchConfiguration('rt_host'),
+        }],
+        output="screen",
+    )
 
     robot_description_content = Command(
         [
@@ -355,7 +376,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         args
-        + [
+        + [ set_config_node,
             # manipulator_container,
             set_urdf_xacro,
             set_robot_description,
@@ -366,10 +387,10 @@ def generate_launch_description():
             TimerAction(period=7.0, actions=[dsr_controller]),
             TimerAction(period=9.0, actions=[dsr_moveit_controller]),
             TimerAction(period=11.0, actions=[cumotion]),
-            TimerAction(period=13.0, actions=[nvblox]),
+            # TimerAction(period=13.0, actions=[nvblox]),
             TimerAction(period=15.0, actions=[moveit_group]),
             TimerAction(period=17.0, actions=[motion_command]),
-            TimerAction(period=18.0, actions=[pick_place_server]),
-            TimerAction(period=20.0, actions=[obstacle]),
+            #TimerAction(period=18.0, actions=[pick_place_server]),
+            #TimerAction(period=20.0, actions=[obstacle]),
         ]
     )

@@ -1,0 +1,11 @@
+MoveIt Collision Objects Scene File +
+* box1
+0.6 0.5 0.2
+0.0 0.0 0.0 1.0
+frame_id: base_link
+box
+0.2 0.2 0.2
+# pad
+# pad
+# pad
+# pad

@@ -57,6 +57,13 @@
     <child link="object_frame"/>
   </joint>
 
+  <link name="world"/>
+  <joint name="world_fixed" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="world"/>
+    <child  link="base_link"/>
+  </joint>
+  
   <!-- ros2_control -->
   <xacro:include filename="$(find dsr_cumotion)/urdf/m1013.ros2_control.xacro"/>
   <xacro:m1013_ros2_control

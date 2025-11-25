@@ -12,6 +12,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from moveit_configs_utils import MoveItConfigsBuilder
 from dsr_bringup2.controller_config import adjust_dsr_controller_yaml, parse_joints_from_urdf
+from dsr_bringup2.utils import read_update_rate
 
 
 def read_params(pkg_name, params_dir, params_file_name):
@@ -37,7 +38,7 @@ def generate_robot_description_action(context, *args, **kwargs):
     dynamic_yaml = LaunchConfiguration('dynamic_yaml').perform(context).lower() == 'true'
     model = LaunchConfiguration('model').perform(context)
     color = LaunchConfiguration('color').perform(context)
-    gripper = str("none")
+    gripper = "none"
 
     # Parse URDF to extract active and passive joints
     urdf_xml, active_joints, passive_joints = parse_joints_from_urdf(model, color, gripper)
@@ -142,7 +143,7 @@ def rviz_and_move_group_fn(context):
     )
 
     rviz_base = os.path.join(pkg_share, "config")
-    rviz_full_config = os.path.join(rviz_base, "moveit.rviz")
+    rviz_full_config = os.path.join(rviz_base, "moveit_test.rviz")
 
     rviz_node = Node(
         package="rviz2",
@@ -247,6 +248,47 @@ def get_cumotion_node(context):
     )
     return launch_args + [static_planning_scene_server, cumotion_planner_node]
 
+def get_object_attach_node(context):
+    enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()
+    gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
+
+    if enable_attach not in ["true", "1", "yes"]:
+        return []
+
+    pkg_share = get_package_share_directory("dsr_cumotion")
+
+    # File paths
+    urdf = "m1013_with_vgc10.urdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.urdf"
+    xrdf = "m1013_with_vgc10.xrdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.xrdf"
+
+    urdf_path = os.path.join(pkg_share, "urdf", urdf)
+    xrdf_path = os.path.join(pkg_share, "xrdf", xrdf)
+
+    launch_args, launch_configs = launch_args_from_params(
+        'dsr_cumotion','config', 'object_attachment_params.yaml', 'object_attachment')
+
+    # Override robot/xrdf path
+    launch_configs["robot"] = xrdf_path
+    launch_configs["urdf_path"] = urdf_path
+
+    attach_object_server_node = Node(
+        package='isaac_ros_cumotion_object_attachment',
+        namespace='',
+        executable='attach_object_server_node',
+        name='object_attachment',
+        parameters=[launch_configs],
+        output='screen',
+    )
+
+    static_depth_node = Node(
+        package="dsr_cumotion",
+        executable="camera_publisher.py",
+        name="static_depth_camera_node",
+        output="log",
+    )
+
+    return launch_args + [attach_object_server_node, static_depth_node]
+
 def generate_launch_description():
     ARGUMENTS = [
         DeclareLaunchArgument('name',  default_value='', description='NAME_SPACE'),
@@ -262,10 +304,12 @@ def generate_launch_description():
         DeclareLaunchArgument("gripper", default_value="true", description="GRIPPER"),
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use sim time"),
         DeclareLaunchArgument("enable_cumotion", default_value="true", description="Enable cumotion node"),
+        DeclareLaunchArgument("enable_attach", default_value="true", description="Enable cumotion node"),
     ]
 
     # Build robot_description and select controller YAML
     robot_description_action = OpaqueFunction(function=generate_robot_description_action)
+    update_rate = read_update_rate() # get update_rate from yaml
 
     # Run set_config
     set_config_node = Node(
@@ -281,9 +325,10 @@ def generate_launch_description():
             "port": LaunchConfiguration('port'),
             "mode": LaunchConfiguration('mode'),
             "model": LaunchConfiguration('model'),
-            "gripper": str("none"),
+            "gripper": "none",
             "mobile": "none",
             "rt_host": LaunchConfiguration('rt_host'),
+            "update_rate": update_rate,
         }],
         output="screen",
     )
@@ -302,7 +347,7 @@ def generate_launch_description():
             "port": LaunchConfiguration('port'),
             "mode": LaunchConfiguration('mode'),
             "model": LaunchConfiguration('model'),
-            "gripper": str("none"),
+            "gripper":"none",
             "mobile": "none",
             "rt_host": LaunchConfiguration('rt_host'),
         }],
@@ -358,6 +403,7 @@ def generate_launch_description():
     # MoveGroup + (optional) RViz
     rviz_and_move_group = OpaqueFunction(function=rviz_and_move_group_fn)
     cumotion = OpaqueFunction(function=get_cumotion_node)
+    attach = OpaqueFunction(function=get_object_attach_node)
 
     # A) After set_config exits, start controller manager and then (after a short delay) spawn joint_state_broadcaster.
     delay_control_node_after_set_config = RegisterEventHandler(
@@ -428,6 +474,16 @@ def generate_launch_description():
         )
     )
     
+    delay_attach_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller_spawner,
+            on_exit=[
+                LogInfo(msg=">> [STEP 5 COMPLETED] cumotion active. Launching cumotion node..."),
+                attach
+            ],
+        )
+    )
+
     delay_server_after_moveit_controller = RegisterEventHandler(
         OnProcessExit(
             target_action=dsr_moveit_controller_spawner,
@@ -449,6 +505,7 @@ def generate_launch_description():
         delay_dsr_moveit_controller_after_robot_controller,
         delay_rviz_after_moveit_controller,
         delay_cumotion_after_moveit_controller,
+        delay_attach_after_moveit_controller,
         delay_server_after_moveit_controller
     ]
 

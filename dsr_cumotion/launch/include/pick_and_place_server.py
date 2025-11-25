@@ -12,11 +12,18 @@ from action_msgs.msg import GoalStatusArray
 from dsr_cumotion_msgs.srv import PickPlace
 from dsr_msgs2.srv import MoveLine
 from isaac_ros_cumotion_interfaces.action import AttachObject
-from isaac_manipulator_ros_python_utils.types import AttachState
+# from isaac_manipulator_ros_python_utils.types import AttachState
 
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Pose, Vector3
 import time
+
+from enum import IntEnum
+
+class AttachState(IntEnum):
+    ATTACH = 0
+    DETACH = 1
+
 class PickPlaceServer(Node):
     def __init__(self):
         super().__init__("pick_place_server")
@@ -198,7 +205,7 @@ class PickPlaceServer(Node):
             return
 
         goal = AttachObject.Goal()
-        goal.attach_object = AttachState.ATTACH.value if attach else AttachState.DETACH.value  # attach/detach
+        goal.attach_object = AttachState.ATTACH.value if attach else AttachState.DETACH.value
         goal.fallback_radius = 0.15
         goal.object_config = self._make_marker("grasp_frame", self.default_mesh_path)  # object marker
 

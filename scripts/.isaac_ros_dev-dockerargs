@@ -1,0 +1,2 @@
+-v `realpath ~/ros2_ws`:/workspaces/ros2_ws
+-v /var/run/docker.sock:/var/run/docker.sock

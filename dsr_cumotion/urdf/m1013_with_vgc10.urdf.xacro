@@ -1,20 +1,24 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="m1013_with_vgc10">
 
-  <xacro:arg name="color" default="white"/>
-  <xacro:arg name="namespace" default=""/>
+  <xacro:arg name="mode"           default="virtual"/>   
+  <xacro:arg name="color"          default="white"/>      
+  <xacro:arg name="namespace"      default=""/>
+
+  <!-- gripper control argument -->
+  <xacro:arg name="gripper"              default="none"/>
   <xacro:arg name="use_gazebo" default="false"/>
-  <xacro:arg name="host" default=""/>
-  <xacro:arg name="port" default=""/>
-  <xacro:arg name="rt_host" default=""/>
-  <xacro:arg name="mode" default=""/>
-  <xacro:arg name="model" default="m1013"/>
+  <xacro:property name="gz" value="$(arg use_gazebo)"/>
+
+  <xacro:property name="cr" value="$(arg color)"/>
+
+  <xacro:property name="gr" value="$(arg gripper)"/>
 
   <xacro:include filename="$(find dsr_cumotion)/urdf/macro.m1013.white.xacro"/>
   <xacro:m1013 namespace="$(arg namespace)"/>
 
   <link name="tool0"/>
-  <joint name="joint_6-tool0" type="fixed">
+  <joint name="joint6-tool0" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <parent link="link_6"/>
     <child link="tool0"/>
@@ -29,6 +33,13 @@
   </joint>
 
   <xacro:include filename="$(find dsr_cumotion)/urdf/vgc10/onrobot_vgc10_4cups_model.urdf"/>
+  
+  <link name="world"/>
+  <joint name="world_fixed" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="world"/>
+    <child  link="base_link"/>
+  </joint>
 
   <joint name="gripper_to_vgc10" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -57,21 +68,9 @@
     <child link="object_frame"/>
   </joint>
 
-  <link name="world"/>
-  <joint name="world_fixed" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <parent link="world"/>
-    <child  link="base_link"/>
-  </joint>
-  
+
   <!-- ros2_control -->
   <xacro:include filename="$(find dsr_cumotion)/urdf/m1013.ros2_control.xacro"/>
-  <xacro:m1013_ros2_control
-    name="m1013"
-    host="$(arg host)"
-    rt_host="$(arg rt_host)"
-    port="$(arg port)"
-    mode="$(arg mode)"
-    model="$(arg model)"/>
+  <xacro:m1013_ros2_control name="m1013"/>
 
 </robot>

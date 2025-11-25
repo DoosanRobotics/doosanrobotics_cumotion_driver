@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=nvcr.io/nvidia/isaac/ros:noble-ros2_jazzy
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    SHELL=/bin/bash \
+    LANG=en_US.UTF-8 \
+    ROS_DISTRO=jazzy \
+    ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
+    DOOSAN_WS=/workspaces/ros2_ws \
+    RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+    ROS_PYTHON_VERSION=3
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        curl \
+        gnupg2 \
+        lsb-release && \
+    sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" > /etc/apt/sources.list.d/gazebo-stable.list' && \
+    wget http://packages.osrfoundation.org/gazebo.key -O - | apt-key add - && \
+    apt-get update
+
+RUN apt-get install -y --no-install-recommends \
+        ros-${ROS_DISTRO}-ros2-control \
+        ros-${ROS_DISTRO}-ros2-controllers \
+        ros-${ROS_DISTRO}-controller-manager \
+        ros-${ROS_DISTRO}-hardware-interface \
+        ros-${ROS_DISTRO}-control-msgs \
+        ros-${ROS_DISTRO}-moveit-core \
+        ros-${ROS_DISTRO}-moveit \
+        ros-${ROS_DISTRO}-moveit-ros-planning \
+        ros-${ROS_DISTRO}-moveit-planners \
+        ros-${ROS_DISTRO}-vision-msgs \
+        ros-${ROS_DISTRO}-vision-opencv \
+        ros-${ROS_DISTRO}-gazebo-msgs \
+        ros-${ROS_DISTRO}-ros-gz \
+        ros-${ROS_DISTRO}-ros-gz-sim \
+        ros-${ROS_DISTRO}-ros-gz-bridge \
+        ros-${ROS_DISTRO}-ros-gz-image \
+        ros-${ROS_DISTRO}-gz-ros2-control \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --break-system-packages -U \
+        colcon-argcomplete \
+        transforms3d
+
+COPY scripts/build-doosan.sh /usr/local/bin/scripts/entrypoint_additions/00-build-doosan.user.sh
+RUN chmod +x /usr/local/bin/scripts/entrypoint_additions/00-build-doosan.user.sh
+WORKDIR /workspaces/isaac_ros-dev
+CMD ["/bin/bash"]

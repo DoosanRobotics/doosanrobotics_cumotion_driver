@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <robot name="m1013" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- dependencies -->
-  <xacro:include filename="$(find dsr_description2)/config/macro.gazebo.xacro"/>
-  <xacro:include filename="$(find dsr_description2)/config/macro.transmission.xacro"/>
+  <!-- <xacro:include filename="$(find dsr_description2)/config/macro.gazebo.xacro"/>
+  <xacro:include filename="$(find dsr_description2)/config/macro.transmission.xacro"/> -->
   <xacro:include filename="$(find dsr_description2)/config/macro.materials.xacro"/>
 
   <xacro:property name="vision_bracket_mesh"
@@ -281,7 +281,7 @@
       </visual>
     </link> -->
 
-    <xacro:dsr_transmission/>
-    <xacro:dsr_gazebo namespace="${namespace}"/>
+    <!-- <xacro:dsr_transmission/> -->
+    <!-- <xacro:dsr_gazebo namespace="${namespace}"/> -->
   </xacro:macro>
 </robot>

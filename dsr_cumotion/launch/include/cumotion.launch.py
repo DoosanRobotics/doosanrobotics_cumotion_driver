@@ -20,9 +20,15 @@ from typing import List, Tuple
 
 from ament_index_python.packages import get_package_share_directory
 
-from isaac_manipulator_ros_python_utils.manipulator_types import CameraType
+# from isaac_manipulator_ros_python_utils.manipulator_types import CameraType
 import isaac_ros_launch_utils as lu
 from isaac_ros_launch_utils.all_types import Action, LaunchDescription, Node
+
+from enum import Enum
+
+class CameraType(Enum):
+    REALSENSE = 0
+    ISAAC_SIM = 1
 
 
 ISAAC_ROS_WS = os.getenv('ISAAC_ROS_WS')

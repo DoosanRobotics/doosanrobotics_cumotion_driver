@@ -1,0 +1,7 @@
+CONFIG_DOCKER_SEARCH_DIRS=(
+    ${ISAAC_ROS_WS}/../docker
+    /usr/lib/isaac-ros-cli/docker
+)
+BASE_DOCKER_REGISTRY_NAMES=(
+    nvcr.io/nvidia/isaac/ros
+)

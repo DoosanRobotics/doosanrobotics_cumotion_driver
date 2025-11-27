@@ -10,7 +10,7 @@
     include_trajopt_retract_seed: False
     num_trajopt_time_steps: 32
     joint_states_topic: "/joint_states"
-    interpolation_dt: 0.025
+    interpolation_dt: 0.01
     collision_cache_cuboid: 20
     collision_cache_mesh: 20
     workspace_file_path: '/workspaces/ros2_ws/cumotion/dsr_cumotion/workbound_test.yaml'

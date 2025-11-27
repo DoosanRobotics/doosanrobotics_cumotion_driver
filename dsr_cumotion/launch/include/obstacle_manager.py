@@ -20,6 +20,7 @@ from std_msgs.msg import String
 from moveit_msgs.msg import CollisionObject, PlanningScene
 from shape_msgs.msg import SolidPrimitive, Mesh, MeshTriangle
 from geometry_msgs.msg import Pose
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 import trimesh  # pip install trimesh
 
 
@@ -47,7 +48,10 @@ class ObstacleManager(Node):
             self.objects = []
 
         # ---- ROS setup ----
-        self.scene_pub = self.create_publisher(PlanningScene, "/planning_scene", 10)
+        qos = QoSProfile(depth=10)
+        qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
+        qos.reliability = ReliabilityPolicy.RELIABLE
+        self.scene_pub = self.create_publisher(PlanningScene, "/planning_scene", qos)
         self.remove_sub = self.create_subscription(String, "/collision_remove", self.remove_callback, 10)
 
         # Publish once after short delay (to let MoveIt initialize)
@@ -61,6 +65,7 @@ class ObstacleManager(Node):
     # ---- Add objects ----
     def add_collision_objects(self):
         scene = PlanningScene()
+        now = self.get_clock().now().to_msg()
         scene.is_diff = True
 
         for obj_def in self.objects:
@@ -74,6 +79,7 @@ class ObstacleManager(Node):
 
             obj = CollisionObject()
             obj.header.frame_id = obj_def.get("frame_id", "base_link")
+            obj.header.stamp = now
             obj.id = object_id
 
             pose = Pose()
@@ -176,13 +182,15 @@ class ObstacleManager(Node):
         data = msg.data.strip()
         scene = PlanningScene()
         scene.is_diff = True
+        now = self.get_clock().now().to_msg()
 
         if not data:
             self.get_logger().warn("Removing ALL collision objects from scene!")
             for obj_def in self.objects:
                 co = CollisionObject()
                 co.id = obj_def["id"]
-                co.header.frame_id = "base_link"
+                co.header.frame_id = obj_def.get("frame_id", "base_link")
+                co.header.stamp = now
                 co.operation = CollisionObject.REMOVE
                 scene.world.collision_objects.append(co)
         else:
@@ -190,7 +198,14 @@ class ObstacleManager(Node):
             for obj_id in ids:
                 co = CollisionObject()
                 co.id = obj_id
-                co.header.frame_id = "base_link"
+                # try to preserve frame_id from the configured objects
+                frame = "base_link"
+                for o in self.objects:
+                    if o.get("id") == obj_id:
+                        frame = o.get("frame_id", "base_link")
+                        break
+                co.header.frame_id = frame
+                co.header.stamp = now
                 co.operation = CollisionObject.REMOVE
                 scene.world.collision_objects.append(co)
                 self.get_logger().info(f"Requested removal of '{obj_id}'")

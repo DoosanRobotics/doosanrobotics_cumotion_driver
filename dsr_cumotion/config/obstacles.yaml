@@ -1,18 +1,23 @@
 objects:
-  # - id: cyl1
-  #   type: cylinder
-  #   position: [0.55, -0.4, 0.0]
-  #   dimensions: [0.05, 0.8]  # radius, height
+  - id: cyl1
+    type: cylinder
+    position: [0.55, -0.4, 0.22]
+    dimensions: [0.05, 0.44]  # radius, height
 
-  # - id: cyl2
-  #   type: cylinder
-  #   position: [0.7, 0.1, 0.0]
-  #   dimensions: [0.03, 1.0]  # radius, height
+  - id: cyl2
+    type: cylinder
+    position: [0.7, 0.1, 0.2]
+    dimensions: [0.03, 0.4]  # radius, height
 
-  # - id: cyl3
-  #   type: cylinder
-  #   position: [0.4, 0.40, 0.0]
-  #   dimensions: [0.04, 0.5]  # radius, height
+  - id: cyl3
+    type: cylinder
+    position: [0.4, 0.40, 0.125]
+    dimensions: [0.04, 0.25]  # radius, height
+
+  - id: box1
+    type: box
+    position: [0.5, 0.0, 0.0025]  # 박스 중심 위치
+    dimensions: [0.5, 1.5, 0.05]  # x, y, z 길이 (radius, width, height)
 
   - id: zig_1
     type: mesh

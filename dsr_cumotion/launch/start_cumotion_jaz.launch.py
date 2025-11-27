@@ -136,7 +136,7 @@ def rviz_and_move_group_fn(context):
     )
 
     rviz_base = os.path.join(pkg_share, "config")
-    rviz_full_config = os.path.join(rviz_base, "moveit_test.rviz")
+    rviz_full_config = os.path.join(rviz_base, "moveit_cumotion.rviz")
 
     gui = str(LaunchConfiguration("gui").perform(context)).lower()
     nodes = [run_move_group_node]
@@ -204,12 +204,12 @@ def get_cumotion_node(context):
             "CUDA_MPS_CLIENT_PRIORITY": launch_configs["cuda_mps_client_priority"]
         })
 
-    # Static Planning Scene Server
+    # # Static Planning Scene Server
     static_planning_scene_server = Node(
         package='isaac_ros_cumotion',
         executable='static_planning_scene',
         name='static_planning_scene_server',
-        output='screen',
+        output='log',
         parameters=[{
             'moveit_collision_objects_scene_file': LaunchConfiguration('cumotion_planner.moveit_collision_objects_scene_file')
 
@@ -226,7 +226,7 @@ def get_cumotion_node(context):
         parameters=[launch_configs],
         env=env_variables
     )
-    return launch_args + [static_planning_scene_server, cumotion_planner_node]
+    return launch_args + [cumotion_planner_node, static_planning_scene_server]
 
 def get_object_attach_node(context):
     enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()

@@ -78,15 +78,9 @@ def generate_robot_description_action(context, *args, **kwargs):
     ]
 
 def rviz_and_move_group_fn(context):
-    model_value = LaunchConfiguration('model').perform(context)
-    gui = LaunchConfiguration('gui').perform(context).lower() == 'true'
     pkg_share = get_package_share_directory("dsr_cumotion")
     use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
 
-    package_name = f"dsr_moveit_config_{model_value}"
-    package_path = FindPackageShare(package_name).perform(context)
-    print("MoveIt Config Package:", package_name)
-    print("Package Path:", package_path)
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     controller_file = os.path.join(pkg_share, "config", "moveit_controllers.yaml")
     model = LaunchConfiguration("model").perform(context)
@@ -95,7 +89,6 @@ def rviz_and_move_group_fn(context):
     srdf_file = "m1013_with_vgc10.srdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.srdf.xacro"
     urdf_path = os.path.join(pkg_share, "urdf", urdf_file)
     srdf_path = os.path.join(pkg_share, "srdf", srdf_file)
-
     moveit_config = (
         MoveItConfigsBuilder(model, package_name="dsr_cumotion")
         .robot_description(file_path=urdf_path)
@@ -145,25 +138,27 @@ def rviz_and_move_group_fn(context):
     rviz_base = os.path.join(pkg_share, "config")
     rviz_full_config = os.path.join(rviz_base, "moveit_test.rviz")
 
-    rviz_node = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        output="log",
-        arguments=["-d", rviz_full_config],
-        parameters=common_params,
-    )
-    return [run_move_group_node, rviz_node]
+    gui = str(LaunchConfiguration("gui").perform(context)).lower()
+    nodes = [run_move_group_node]
 
-# sets up the parameters for the controller manager node, if 'gripper' argument is setted, it additionally loads the 'gripper_controller.yaml' file
+    if gui in ["true", "1", "yes"]:
+        rviz_node = Node(
+            package="rviz2",
+            executable="rviz2",
+            name="rviz2",
+            output="log",
+            arguments=["-d", rviz_full_config],
+            parameters=common_params,
+        )
+        nodes.append(rviz_node)
+
+    return nodes
+
 def control_node_fn(context):
     params = [{"robot_description": ParameterValue(LaunchConfiguration('robot_description'), value_type=str)}, LaunchConfiguration('controller_yaml')]
 
     if LaunchConfiguration('gripper').perform(context) == 'robotiq_2f85':
         pkg_share = get_package_share_directory("dsr_controller2")
-        gripper_yaml = os.path.join(pkg_share, "config", "gripper_controller.yaml")
-        params.append(gripper_yaml)
-        print(f"[INFO] Including gripper YAML in controller_manager: {gripper_yaml}")
 
     node = Node(
         package="controller_manager",
@@ -173,21 +168,6 @@ def control_node_fn(context):
         output="both",
     )
     return [node]
-
-def gripper_spawner_fn(context):
-    if LaunchConfiguration('gripper').perform(context) != 'robotiq_2f85':
-        return []
-
-    return [Node(
-        package="controller_manager",
-        namespace=LaunchConfiguration('name'),
-        executable="spawner",
-        arguments=[
-            "gripper_position_controller",
-            "-c", "controller_manager",
-        ],
-        output="screen",
-    )]
 
 # Include CuMotion pipeline (Isaac ROS CuMotion)
 def get_cumotion_node(context):
@@ -286,8 +266,19 @@ def get_object_attach_node(context):
         name="static_depth_camera_node",
         output="log",
     )
-
     return launch_args + [attach_object_server_node, static_depth_node]
+
+def obstacle_manager_fn(context):
+    pkg_share = get_package_share_directory("dsr_cumotion")
+    yaml_path = os.path.join(pkg_share, "config", "obstacles.yaml")
+    obstacle_node = Node(
+        package="dsr_cumotion",
+        executable="obstacle_manager.py",
+        name="obstacle_manager",
+        output="screen",
+        parameters=[{"config_file": yaml_path}],
+    )
+    return [obstacle_node]
 
 def generate_launch_description():
     ARGUMENTS = [
@@ -400,12 +391,30 @@ def generate_launch_description():
         output="screen",
     )
 
+    motion_command = Node(
+        package="dsr_cumotion_goal_interface",
+        executable="move_command_node",
+        name="move_command_node",
+        output="screen",
+        parameters = [{
+            'planning_group': 'manipulator',
+            'planner_pipeline': 'isaac_ros_cumotion',
+            'planner_id': 'cuMotion',
+            'base_frame': 'base_link',
+            'tool_frame': 'grasp_frame',
+            'allowed_planning_time': 5.0,
+            'num_planning_attempts': 10,
+            'max_vel_scale': 1.0,
+            'max_acc_scale': 1.0,
+        }]
+    )
+
     # MoveGroup + (optional) RViz
     rviz_and_move_group = OpaqueFunction(function=rviz_and_move_group_fn)
     cumotion = OpaqueFunction(function=get_cumotion_node)
     attach = OpaqueFunction(function=get_object_attach_node)
+    obstacle = OpaqueFunction(function=obstacle_manager_fn)
 
-    # A) After set_config exits, start controller manager and then (after a short delay) spawn joint_state_broadcaster.
     delay_control_node_after_set_config = RegisterEventHandler(
         OnProcessExit(
             target_action=set_config_node,
@@ -420,7 +429,6 @@ def generate_launch_description():
         )
     )
 
-    # B) Once joint_state_broadcaster is active, spawn dsr_controller2 (arm controller).
     delay_robot_controller_after_joint_state = RegisterEventHandler(
         OnProcessExit(
             target_action=joint_state_broadcaster_spawner,
@@ -431,18 +439,6 @@ def generate_launch_description():
         )
     )
 
-    # C) After dsr_controller2 becomes active, (conditionally) spawn the gripper position controller.
-    delay_gripper_after_robot_controller = RegisterEventHandler(
-        OnProcessExit(
-            target_action=robot_controller_spawner,
-            on_exit=[
-                LogInfo(msg=">> [STEP 3A] dsr_controller2 active. (cond) starting gripper_position_controller..."),
-                OpaqueFunction(function=gripper_spawner_fn),
-            ],
-        )
-    )
-
-    # D) After dsr_controller2 becomes active, spawn dsr_moveit_controller (MoveIt-compatible trajectory controller).
     delay_dsr_moveit_controller_after_robot_controller = RegisterEventHandler(
         OnProcessExit(
             target_action=robot_controller_spawner,
@@ -453,7 +449,6 @@ def generate_launch_description():
         )
     )
 
-    # E) After dsr_moveit_controller is active, start MoveGroup (and RViz if gui=true).
     delay_rviz_after_moveit_controller = RegisterEventHandler(
         OnProcessExit(
             target_action=dsr_moveit_controller_spawner,
@@ -468,7 +463,7 @@ def generate_launch_description():
         OnProcessExit(
             target_action=dsr_moveit_controller_spawner,
             on_exit=[
-                LogInfo(msg=">> [STEP 5 COMPLETED] cumotion active. Launching cumotion node..."),
+                LogInfo(msg=">> [STEP 5 COMPLETED] controller active. Launching cumotion node..."),
                 cumotion
             ],
         )
@@ -478,7 +473,7 @@ def generate_launch_description():
         OnProcessExit(
             target_action=dsr_moveit_controller_spawner,
             on_exit=[
-                LogInfo(msg=">> [STEP 5 COMPLETED] cumotion active. Launching cumotion node..."),
+                LogInfo(msg=">> [STEP 6 COMPLETED] controller active. Launching attach node..."),
                 attach
             ],
         )
@@ -488,11 +483,32 @@ def generate_launch_description():
         OnProcessExit(
             target_action=dsr_moveit_controller_spawner,
             on_exit=[
-                LogInfo(msg=">> [STEP 5 COMPLETED] cumotion active. Launching cumotion node..."),
+                LogInfo(msg=">> [STEP 7 COMPLETED] controller active. Launching pick_place_server node..."),
                 pick_place_server
             ],
         )
     )
+
+    delay_obstacle_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller_spawner,
+            on_exit=[
+                LogInfo(msg=">> ######################[STEP 8 COMPLETED] moveit_controller active. Launching obstacle node..."),
+                obstacle
+            ],
+        )
+    )
+
+    delay_motion_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller_spawner,
+            on_exit=[
+                LogInfo(msg=">> #####################[STEP 9COMPLETED] moveit_controller active. Launching motion node..."),
+                motion_command
+            ],
+        )
+    )
+
     nodes = [
         LogInfo(msg=">> [START] Launching Doosan Robot Bringup with MoveIt2..."),
         robot_description_action,
@@ -501,12 +517,13 @@ def generate_launch_description():
         robot_state_pub_node,
         delay_control_node_after_set_config,
         delay_robot_controller_after_joint_state,
-        delay_gripper_after_robot_controller,
         delay_dsr_moveit_controller_after_robot_controller,
         delay_rviz_after_moveit_controller,
         delay_cumotion_after_moveit_controller,
         delay_attach_after_moveit_controller,
-        delay_server_after_moveit_controller
+        delay_server_after_moveit_controller,
+        delay_obstacle_after_moveit_controller,
+        delay_motion_after_moveit_controller,
     ]
 
     return LaunchDescription(ARGUMENTS + nodes)

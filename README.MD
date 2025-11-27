@@ -35,12 +35,12 @@ workspaces/
 다음 명령으로 Isaac ROS CLI 설정 디렉토리를 생성합니다.
 
 ```bash
-mkdir -p ~/workspaces/isaac_ros-dev/.isaac_ros_cli
+mkdir -p ~/workspaces/isaac_ros-dev/.isaac-ros-cli
 ```
 
 그 다음 아래 내용을 포함한 `config.yaml` 파일을 생성합니다.
 
-### `~/workspaces/isaac_ros-dev/.isaac_ros_cli/config.yaml`
+### `~/workspaces/isaac_ros-dev/.isaac-ros-cli/config.yaml`
 
 ```yaml
 environment:

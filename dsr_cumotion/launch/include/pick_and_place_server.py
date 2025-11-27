@@ -34,7 +34,7 @@ class PickPlaceServer(Node):
         self.attach_srv = self.create_service(PickPlace,"attach_detach_command",self.handle_attach_detach,callback_group=self.cb_group)
         self.srv = self.create_service(PickPlace,"pick_place_command",self.handle_request,callback_group=self.cb_group)  # main service server
 
-        self.default_mesh_path = "/ros2_ws/src/cumotion/dsr_cumotion/meshes/object/box_7.obj"  # mesh for object
+        self.default_mesh_path = "/workspaces/ros2_ws/src/cumotion/dsr_cumotion/meshes/object/box_7.obj"  # mesh for object
 
         self.result_future = None       # final result future
         self.current_mode = None        # 0=pick, 1=place
@@ -205,7 +205,7 @@ class PickPlaceServer(Node):
             return
 
         goal = AttachObject.Goal()
-        goal.attach_object = AttachState.ATTACH.value if attach else AttachState.DETACH.value
+        goal.attach_object = bool(attach)
         goal.fallback_radius = 0.15
         goal.object_config = self._make_marker("grasp_frame", self.default_mesh_path)  # object marker
 
@@ -246,8 +246,15 @@ class PickPlaceServer(Node):
         m.scale = Vector3(x=1.0, y=1.0, z=1.0)
         m.color.g = 1.0
         m.color.a = 1.0
+        m.action = Marker.ADD
+        m.id = 0
+        m.ns = "attached_object"
+        m.color.r = 0.2
+        m.color.g = 1.0
+        m.color.b = 0.2
+        m.color.a = 1.0
         return m
-
+    
     def handle_attach_detach(self, req, res):
         # 0 = attach, 1 = detach
         attach_mode = req.motion_type

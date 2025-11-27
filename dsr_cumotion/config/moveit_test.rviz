@@ -393,6 +393,7 @@ Visualization Manager:
         Trail Step Size: 1
         Trajectory Topic: /display_planned_path
         Use Sim Time: false
+        
       Planning Metrics:
         Payload: 1
         Show Joint Torques: false

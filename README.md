@@ -119,14 +119,11 @@ cd ~/workspaces/isaac_ros-dev/src
 
 git clone --recursive -b release-3.2 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
 git clone --recursive -b release-3.2 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_cumotion.git
-git clone --recursive -b release-3.2 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git
 ```
 
 - isaac_ros_common: Core utilities for Docker build and environment setup
 
 - isaac_ros_cumotion: GPU-based cuMotion motion planning
-
-- isaac_ros_nvblox: Real-time 3D mapping and voxel reconstruction
 
 Ensure all repositories are checked out under release-3.2 for compatibility.
 
@@ -136,7 +133,7 @@ mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 
 git clone https://github.com/DoosanRobotics/doosan-robot2.git
-git clone git@bitbucket.org:doosan-robotics/cumotion.git
+git clone https://github.com/DoosanRobotics/doosanrobotics_cumotion_driver
 ```
 
 ----
@@ -220,20 +217,13 @@ source install/setup.bash
 cd /ros2_ws
 source install/setup.bash
 ```
-
-**Recommended order:**
-
-1. `/opt/ros/<distro>/setup.bash`
-2. Upper/shared workspace `install/setup.bash`
-3. Current active workspace `install/setup.bash`
-
 ---
 
 ## Step 2. Launch Execution (Real / Virtual)
 
 ### 2.1 Main Launch File
 
-The main entry point to start the integrated environment (Doosan + cuMotion + optional NVBLOX).
+The main entry point to start the integrated environment (Doosan + cuMotion)
 
 **Real Robot Mode (connects to physical controller):**
 
@@ -246,14 +236,13 @@ ros2 launch dsr_cumotion start_cumotion.launch.py \
 
 ```bash
 ros2 launch dsr_cumotion start_cumotion.launch.py \
-  mode:=virtual host:=127.0.0.1 enable_nvblox:=false gripper:=true
+  mode:=virtual host:=127.0.0.1 gripper:=true
 ```
 
 **Parameter Description:**
 
 * `mode` — `real` for physical robot, `virtual` for emulator/simulation.
 * `host` — Controller IP (real robot) or emulator host (`127.0.0.1` for local).
-* `enable_nvblox` — Enables real-time 3D environment reconstruction (set to `false` for lightweight systems).
 * `gripper` — Must be `true` to load the VGC10-equipped model.
 * `enable_cumotion` — Enables cuMotion-based motion planning (default: `true`).
 * `enable_attach` — Enables object attachment handling (default: `true`).
@@ -263,16 +252,6 @@ ros2 launch dsr_cumotion start_cumotion.launch.py \
 **Notes:**
 
 * The current configuration supports the **M1013** model by default.
-* When running on laptops or systems with limited GPU resources, keep `enable_nvblox:=false` to run cuMotion only.
-
----
-
-## Step 3. Motion Command Publishing (Topics / Actions)
-
-**Topic:** `/target_pose`
-**Message Type:** `dsr_cumotion_msgs/TargetPose2`
-
-All motion commands are internally processed through MoveIt 2 + cuMotion + Doosan controller layers.
 
 ---
 
@@ -393,44 +372,16 @@ which dispatches it to the appropriate executor (`PoseExecutor`, `JointExecutor`
 ### Attach an Object to the Tool Frame
 
 ```bash
-ros2 action send_goal /attach_object \
-isaac_ros_cumotion_interfaces/action/AttachObject --feedback \
-"attach_object: true
-fallback_radius: 0.05
-object_config:
-  header: {frame_id: grasp_frame}
-  type: 10
-  mesh_resource: '/ros2_ws/src/cumotion/dsr_cumotion/meshes/object/box_long.obj'
-  pose:
-    position: {x: 0.0, y: 0.0, z: 0.05}
-    orientation: {x: 1.0, y: 0.0, z: 0.0, w: 0.0}
-  scale: {x: 1.0, y: 1.0, z: 1.0}"
+ros2 service call /attach_detach_command dsr_cumotion_msgs/srv/PickPlace "{motion_type: 0}"
 ```
-
-**Notes:**
-
-* `type: 10` indicates a mesh-type object (package-defined constant).
-* `fallback_radius` defines a backup collision sphere radius if mesh loading fails.
-* The object origin (center) attaches to `grasp_frame`; adjust `z` to half the object height if needed.
-* Ensure `.obj` path, orientation, and scale match the collision environment.
 
 ---
 
 ### Detach Object
 
 ```bash
-ros2 action send_goal /attach_object \
-isaac_ros_cumotion_interfaces/action/AttachObject --feedback \
-"attach_object: false
-fallback_radius: 0.05
-object_config:
-  type: 2"
+ros2 service call /attach_detach_command dsr_cumotion_msgs/srv/PickPlace "{motion_type: 1}"
 ```
-
-**Description:**
-Detaches the previously attached object from the tool frame.
-`type: 2` corresponds to the “Detach” or primitive mode in package definitions.
-
 ---
 
 **Author:** Runtime Execution Guide for Doosan ROS 2 + Isaac ROS

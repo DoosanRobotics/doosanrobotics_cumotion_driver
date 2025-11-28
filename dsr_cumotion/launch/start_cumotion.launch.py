@@ -2,24 +2,15 @@ import os
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    OpaqueFunction,
-    SetLaunchConfiguration,
-    TimerAction,
-    IncludeLaunchDescription,
-)
-from launch.substitutions import (
-    Command,
-    FindExecutable,
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
+from launch.actions import RegisterEventHandler, DeclareLaunchArgument, LogInfo, OpaqueFunction, SetLaunchConfiguration, TimerAction, IncludeLaunchDescription
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration,PathJoinSubstitution
+from launch.event_handlers import OnProcessExit
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 from moveit_configs_utils import MoveItConfigsBuilder
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from dsr_bringup2.utils import read_update_rate
 
 
 # Generate MoveIt2 + RViz node (CuMotion integrated)
@@ -45,7 +36,7 @@ def get_moveit_group_node(context):
         .robot_description(file_path=urdf_path)
         .robot_description_semantic(file_path=srdf_path)
         .robot_description_kinematics(file_path=kinematics_file)
-        .joint_limits(file_path=joint_limits_file)
+        # .joint_limits(file_path=joint_limits_file)
         .trajectory_execution(file_path=controller_file)
         .to_moveit_configs()
     )
@@ -68,11 +59,11 @@ def get_moveit_group_node(context):
     moveit_config.planning_pipelines["default_planning_pipeline"] = "isaac_ros_cumotion"
 
     if use_sim_bool:
-        moveit_config.trajectory_execution["trajectory_execution"]["allowed_start_tolerance"] = 0.0
+        moveit_config.trajectory_execution["trajectory_execution"]["allowed_start_tolerance"] = 0.01
 
     moveit_config.moveit_cpp.update({"use_sim_time": use_sim_bool})
     moveit_dict = moveit_config.to_dict()
-    moveit_dict["capabilities"] = "move_group/ExecuteTaskSolutionCapability"
+    # moveit_dict["capabilities"] = "move_group/ExecuteTaskSolutionCapability"
 
     # MoveGroup node
     move_group_node = Node(
@@ -102,7 +93,6 @@ def get_moveit_group_node(context):
 
 # Include CuMotion pipeline (Isaac ROS CuMotion)
 def get_cumotion_node(context):
-    use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     enable_cumotion = str(LaunchConfiguration("enable_cumotion").perform(context)).lower()
     enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()
@@ -125,7 +115,6 @@ def get_cumotion_node(context):
                 "read_esdf_world": "False",
                 "tool_frame": "grasp_frame",
                 "joint_states_topic": "/joint_states",
-                "use_sim_time": str(use_sim_bool),
                 "urdf_file_path": urdf_path,
                 "robot_file_name": xrdf_path,
                 "gripper": gripper,
@@ -144,23 +133,23 @@ def get_cumotion_node(context):
     return nodes
 
 # Include NVBlox mapping pipeline
-def get_nvblox_node(context):
-    use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
-    enable_nvblox = str(LaunchConfiguration("enable_nvblox").perform(context)).lower()
-    nodes = []
+# def get_nvblox_node(context):
+#     use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
+#     enable_nvblox = str(LaunchConfiguration("enable_nvblox").perform(context)).lower()
+#     nodes = []
 
-    if enable_nvblox in ["true", "1", "yes"]:
-        launch_dir = os.path.join(get_package_share_directory("dsr_cumotion"), "launch", "include")
-        nvblox_launch = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([launch_dir, "/nvblox.launch.py"]),
-            launch_arguments={
-                "camera_type": "isaac_sim",
-                "use_sim_time": str(use_sim_bool),
-                "workspace_bounds_name": "workbound_test",
-            }.items(),
-        )
-        nodes.append(nvblox_launch)
-    return nodes
+#     if enable_nvblox in ["true", "1", "yes"]:
+#         launch_dir = os.path.join(get_package_share_directory("dsr_cumotion"), "launch", "include")
+#         nvblox_launch = IncludeLaunchDescription(
+#             PythonLaunchDescriptionSource([launch_dir, "/nvblox.launch.py"]),
+#             launch_arguments={
+#                 "camera_type": "isaac_sim",
+#                 "use_sim_time": str(use_sim_bool),
+#                 "workspace_bounds_name": "workbound_test",
+#             }.items(),
+#         )
+#         nodes.append(nvblox_launch)
+#     return nodes
 
 
 def set_urdf_xacro_fn(context):
@@ -188,9 +177,9 @@ def control_node_fn(context):
     pkg_share = get_package_share_directory('dsr_cumotion')
     pkg_share_dsr = get_package_share_directory("dsr_controller2")
     controller_yaml_path = os.path.join(pkg_share_dsr, "config", "dsr_controller2.yaml")
-    gripper_yaml = os.path.join(pkg_share, "config", "robotiq_controller.yaml")
+    # gripper_yaml = os.path.join(pkg_share, "config", "robotiq_controller.yaml")
 
-    params = [robot_description_param, controller_yaml_path, gripper_yaml]
+    params = [robot_description_param, controller_yaml_path]
 
     node = Node(
         package="controller_manager",
@@ -231,68 +220,55 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use sim time"),
         DeclareLaunchArgument("gripper", default_value="true", description="GRIPPER"),
         DeclareLaunchArgument("obstacle", default_value="true", description="Obstacle using moveit planningscene"),
-        DeclareLaunchArgument("enable_nvblox", default_value="true", description="Enable nvblox node"),
+        # DeclareLaunchArgument("enable_nvblox", default_value="false", description="Enable nvblox node"),
         DeclareLaunchArgument("enable_cumotion", default_value="true", description="Enable cumotion node"),
         DeclareLaunchArgument("enable_attach", default_value="true", description="Enable object_attach node"),
     ]
 
     set_urdf_xacro = OpaqueFunction(function=set_urdf_xacro_fn)
+    update_rate = str(read_update_rate()) # get update_rate from yaml
 
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             LaunchConfiguration("urdf_xacro_path"),
-            " name:=",
-            LaunchConfiguration("name"),
-            " host:=",
-            LaunchConfiguration("host"),
-            " rt_host:=",
-            LaunchConfiguration("rt_host"),
-            " port:=",
-            LaunchConfiguration("port"),
-            " mode:=",
-            LaunchConfiguration("mode"),
-            " model:=",
-            LaunchConfiguration("model"),
-            " color:=",
-            LaunchConfiguration("color"),
+            " name:=",LaunchConfiguration("name"),
+            " host:=",LaunchConfiguration("host"),
+            " rt_host:=",LaunchConfiguration("rt_host"),
+            " port:=",LaunchConfiguration("port"),
+            " mode:=",LaunchConfiguration("mode"),
+            " model:=",LaunchConfiguration("model"),
+            " color:=",LaunchConfiguration("color"),
+            " update_rate:=", update_rate,
         ]
     )
 
     set_robot_description = SetLaunchConfiguration("robot_description", robot_description_content)
 
-    manipulator_container = Node(
-        package="rclcpp_components",
-        executable="component_container_mt",
-        name="manipulator_container",
-        output="screen",
-        parameters=[{"use_sim_time": True}],
-        arguments=["--ros-args", "--log-level", "info"],
-    )
-
     run_emulator = Node(
         package="dsr_bringup2",
         executable="run_emulator",
-        namespace=LaunchConfiguration("name"),
-        output="screen",
+        namespace=LaunchConfiguration('name'),
         parameters=[
-            {
-                "name": LaunchConfiguration("name"),
-                "rate": 100,
-                "standby": 5000,
-                "command": True,
-                "host": LaunchConfiguration("host"),
-                "port": LaunchConfiguration("port"),
-                "mode": LaunchConfiguration("mode"),
-                "model": LaunchConfiguration("model"),
-                "mobile": "none",
-                "rt_host": LaunchConfiguration("rt_host"),
-            }
+            {"name":    LaunchConfiguration('name')  }, 
+            {"rate":    100         },
+            {"standby": 5000        },
+            {"command": True        },
+            {"host":    LaunchConfiguration('host')  },
+            {"port":    LaunchConfiguration('port')  },
+            {"mode":    LaunchConfiguration('mode')  },
+            {"model":   LaunchConfiguration('model') },
+            {"gripper": "none"      },
+            {"mobile":  "none"      },
+            {"rt_host":  LaunchConfiguration('rt_host')      },
+            #parameters_file_path       # If a parameter is set in both the launch file and a YAML file, the value from the YAML file will be used.
         ],
+        output="screen",
     )
 
     control_node = OpaqueFunction(function=control_node_fn)
+    
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -340,30 +316,125 @@ def generate_launch_description():
             'num_planning_attempts': 10,
             'max_vel_scale': 1.0,
             'max_acc_scale': 1.0,
+            "retry_num" : 0,
         }]
     )
 
+    pick_place_server = Node(
+        package="dsr_cumotion",
+        executable="pick_and_place_server.py",
+        name="pick_and_place_server",
+        output="screen",
+    )
+
     cumotion = OpaqueFunction(function=get_cumotion_node)
-    nvblox = OpaqueFunction(function=get_nvblox_node)
+    # nvblox = OpaqueFunction(function=get_nvblox_node)
     moveit_group = OpaqueFunction(function=get_moveit_group_node)
     obstacle = OpaqueFunction(function=obstacle_manager_fn)
 
+    delay_jsb_after_control = RegisterEventHandler(
+        OnProcessExit(
+            target_action=control_node,
+            on_exit=[
+                LogInfo(msg=">> control node active. Launching jsb..."),
+                joint_state_broadcaster
+            ],
+        )
+    )
+
+    delay_dsr_controller_after_jsb = RegisterEventHandler(
+        OnProcessExit(
+            target_action=joint_state_broadcaster,
+            on_exit=[
+                LogInfo(msg=">>  jsb active. Launching dsr_controller..."),
+                dsr_controller
+            ],
+        )
+    )
+
+    delay_moveit_controller_after_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_controller,
+            on_exit=[
+                LogInfo(msg=">>  dsr_controller active. Launching moveit_controller..."),
+                dsr_moveit_controller
+            ],
+        )
+    )
+
+    delay_moveit_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_controller,
+            on_exit=[
+                LogInfo(msg=">>  dsr_controller active. Launching moveit_controller..."),
+                moveit_group
+            ],
+        )
+    )
+
+    delay_motion_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller,
+            on_exit=[
+                LogInfo(msg=">> moveit_controller active. Launching moveit node..."),
+                motion_command
+            ],
+        )
+    )
+
+    delay_cumotion_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller,
+            on_exit=[
+                LogInfo(msg=">> moveit controller active. Launching cumotion node..."),
+                cumotion
+            ],
+        )
+    )
+
+    delay_server_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller,
+            on_exit=[
+                LogInfo(msg=">> controller active. Launching pick_place_server node..."),
+                pick_place_server
+            ],
+        )
+    )
+
+    delay_obstacle_after_moveit_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=dsr_moveit_controller,
+            on_exit=[
+                LogInfo(msg=">> moveit_controller active. Launching obstacle node..."),
+                obstacle
+            ],
+        )
+    )
     return LaunchDescription(
         args
         + [
-            manipulator_container,
+            # manipulator_container,
             set_urdf_xacro,
             set_robot_description,
             run_emulator,
-            TimerAction(period=3.0, actions=[control_node]),
+            control_node, 
             robot_state_publisher,
-            TimerAction(period=5.0, actions=[joint_state_broadcaster]),
-            TimerAction(period=7.0, actions=[dsr_controller]),
-            TimerAction(period=9.0, actions=[dsr_moveit_controller]),
-            TimerAction(period=11.0, actions=[cumotion]),
-            TimerAction(period=13.0, actions=[nvblox]),
-            TimerAction(period=15.0, actions=[moveit_group]),
-            TimerAction(period=20.0, actions=[obstacle]),
-            TimerAction(period=20.0, actions=[motion_command]),
+            delay_jsb_after_control,
+            delay_dsr_controller_after_jsb,
+            delay_moveit_controller_after_controller,
+            delay_motion_after_moveit_controller,
+            delay_obstacle_after_moveit_controller, 
+            delay_server_after_moveit_controller,
+            delay_cumotion_after_moveit_controller,
+            delay_moveit_after_moveit_controller,
+            # TimerAction(period=5.0, actions=[joint_state_broadcaster]),
+            # TimerAction(period=7.0, actions=[dsr_controller]),
+            # TimerAction(period=9.0, actions=[dsr_moveit_controller]),
+            # TimerAction(period=11.0, actions=[cumotion]),
+            # TimerAction(period=15.0, actions=[moveit_group]),
+            # TimerAction(period=17.0, actions=[motion_command]),
+            # TimerAction(period=18.0, actions=[pick_place_server]),
+            # TimerAction(period=20.0, actions=[obstacle]),
         ]
     )

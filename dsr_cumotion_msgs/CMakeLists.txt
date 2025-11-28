@@ -11,6 +11,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TargetJoint.msg"
   "msg/TargetNamed.msg"
   "msg/TargetRelative.msg"
+  "srv/PickPlace.srv"
   DEPENDENCIES builtin_interfaces
 )
 

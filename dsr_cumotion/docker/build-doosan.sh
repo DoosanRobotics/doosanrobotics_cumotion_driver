@@ -16,7 +16,7 @@ fi
 
 # Install essential dependencies (optional)
 echo "[build-doosan] Checking essential dependencies..."
-sudo apt-get update -qq
+sudo apt-get update --allow-releaseinfo-change --allow-releaseinfo-change-origin --allow-releaseinfo-change-label -qq || true-qq
 sudo apt-get install -y --no-install-recommends \
   libpoco-dev libyaml-cpp-dev wget dbus-x11 \
   ros-${ROS_DISTRO}-control-msgs ros-${ROS_DISTRO}-realtime-tools \
@@ -32,26 +32,28 @@ echo "[build-doosan] === Building Isaac ROS workspace (${ISAAC_WS}) ==="
 
 if [ -f "${ISAAC_WS}/install/setup.bash" ]; then
   echo "[build-doosan] Isaac workspace already built — overlaying."
+  rosdep update || true
+  rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
   source "${ISAAC_WS}/install/setup.bash"
+
 elif [ -d "${ISAAC_SRC}" ]; then
   echo "[build-doosan] Isaac install not found — building from source."
   cd "${ISAAC_WS}"
 
-  rosdep update || true
-  rosdep install -i -r --from-paths "${ISAAC_SRC}" --rosdistro ${ROS_DISTRO} --ignore-src -y || true
+  rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
 
   colcon build --packages-skip nvblox_test_data nvblox_test
   source "${ISAAC_WS}/install/setup.bash"
   echo "[build-doosan] Isaac workspace built successfully."
 else
-  echo "[build-doosan] ⚠️  Isaac src directory not found — skipping Isaac build."
+  echo "[build-doosan]   Isaac src directory not found — skipping Isaac build."
 fi
 
 # Doosan Workspace Build / Emulator Installation
 echo "[build-doosan] === Building Doosan workspace (${DOOSAN_WS}) ==="
 
 if [ ! -d "${DOOSAN_SRC}" ]; then
-  echo "[build-doosan] ❌ No ${DOOSAN_SRC} directory found — skipping Doosan build."
+  echo "[build-doosan]  No ${DOOSAN_SRC} directory found — skipping Doosan build."
 else
   # Optional emulator install if present
   if [ -d "${DOOSAN_SRC}/doosan-robot2" ] && [ -f "${DOOSAN_SRC}/doosan-robot2/install_emulator.sh" ]; then
@@ -64,11 +66,8 @@ else
   cd "${DOOSAN_WS}"
   if [ -f "${DOOSAN_WS}/install/setup.bash" ]; then
     echo "[build-doosan] Doosan install already present — skipping build."
-  else
-    rosdep update || true
-    rosdep install --from-paths "${DOOSAN_SRC}" --ignore-src -y -r || true
 
-    # Skip Gazebo if not needed
+  else
     colcon build || {
       echo "[WARN] colcon build failed for some packages — continuing..."
     }
@@ -83,6 +82,8 @@ if getent group nvidia-dcgm >/dev/null; then
 else
   echo "[build-doosan]   Group 'nvidia-dcgm' not found — skipping."
 fi
+
+sudo chmod 666 /var/run/docker.sock
 
 # Summary
 echo ""

@@ -1,0 +1,26 @@
+# =======================
+# Request
+# =======================
+
+int8 motion_type          # 0 = pick (attach), 1 = place (detach)
+
+float32 dx                # relative translation X (m)
+float32 dy                # relative translation Y (m)
+float32 dz                # relative translation Z (m)
+float32 drx               # relative rotation X (deg)
+float32 dry               # relative rotation Y (deg)
+float32 drz               # relative rotation Z (deg)
+
+float64[2] vel            # [mm/s, deg/s]
+float64[2] acc            # [mm/s^2, deg/s^2]
+
+int8 ref                  # DR_BASE=0, DR_TOOL=1
+int8 mv_mode              # DR_MV_MOD_ABS=0, DR_MV_MOD_REL=1
+
+---
+# =======================
+# Response
+# =======================
+
+bool success
+string message

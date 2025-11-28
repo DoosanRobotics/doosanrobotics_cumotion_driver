@@ -26,7 +26,7 @@ install(PROGRAMS
   launch/include/move_to_pose.py
   launch/include/camera_publisher.py
   launch/include/obstacle_manager.py
-  launch/include/pick_and_place.py
+  launch/include/pick_and_place_server.py
 
   DESTINATION lib/${PROJECT_NAME}
 )

@@ -332,15 +332,6 @@ def generate_launch_description():
     moveit_group = OpaqueFunction(function=get_moveit_group_node)
     obstacle = OpaqueFunction(function=obstacle_manager_fn)
 
-    delay_jsb_after_control = RegisterEventHandler(
-        OnProcessExit(
-            target_action=control_node,
-            on_exit=[
-                LogInfo(msg=">> control node active. Launching jsb..."),
-                joint_state_broadcaster
-            ],
-        )
-    )
 
     delay_dsr_controller_after_jsb = RegisterEventHandler(
         OnProcessExit(
@@ -420,7 +411,7 @@ def generate_launch_description():
             run_emulator,
             control_node, 
             robot_state_publisher,
-            delay_jsb_after_control,
+            joint_state_broadcaster,
             delay_dsr_controller_after_jsb,
             delay_moveit_controller_after_controller,
             delay_motion_after_moveit_controller,

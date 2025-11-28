@@ -240,7 +240,7 @@ def generate_launch_description():
             " mode:=",LaunchConfiguration("mode"),
             " model:=",LaunchConfiguration("model"),
             " color:=",LaunchConfiguration("color"),
-            " update_rate:=", update_rate,
+            " update_rate:=", "50",
         ]
     )
 

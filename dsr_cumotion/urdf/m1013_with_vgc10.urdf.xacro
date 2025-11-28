@@ -1,21 +1,25 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="m1013_with_vgc10">
 
-  <xacro:arg name="color" default="white"/>
-  <xacro:arg name="namespace" default=""/>
-  <xacro:arg name="use_gazebo" default="false"/>
-  <xacro:arg name="host" default=""/>
-  <xacro:arg name="port" default=""/>
-  <xacro:arg name="rt_host" default=""/>
-  <xacro:arg name="mode" default=""/>
-  <xacro:arg name="model" default="m1013"/>
+  <xacro:arg name="color"        default="white"/>
+  <xacro:arg name="gripper"      default="none"/>
+  <xacro:arg name="namespace"    default=""/>
+  <xacro:arg name="use_gazebo"   default="false"/>
+  <xacro:arg name="use_mujoco"   default="false"/>
+  <xacro:arg name="host"         default=""/>
+  <xacro:arg name="port"         default=""/>
+  <xacro:arg name="rt_host"      default=""/>
+  <xacro:arg name="mode"         default=""/>
+  <xacro:arg name="model"        default=""/>
+  <xacro:arg name="update_rate"  default=""/>
+
 
   <xacro:include filename="$(find dsr_cumotion)/urdf/macro.m1013.white.xacro"/>
   <xacro:m1013 namespace="$(arg namespace)"/>
 
   <link name="tool0"/>
   <joint name="joint_6-tool0" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 1.57"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
     <parent link="link_6"/>
     <child link="tool0"/>
   </joint>
@@ -43,6 +47,20 @@
     <child  link="grasp_frame"/>
   </joint>
 
+  <link name="object_frame">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="object_joint" type="fixed">
+    <origin xyz="0 0 0.07" rpy="0 0 0"/>
+    <parent link="grasp_frame"/>
+    <child link="object_frame"/>
+  </joint>
+
   <!-- ros2_control -->
   <xacro:include filename="$(find dsr_cumotion)/urdf/m1013.ros2_control.xacro"/>
   <xacro:m1013_ros2_control
@@ -51,6 +69,7 @@
     rt_host="$(arg rt_host)"
     port="$(arg port)"
     mode="$(arg mode)"
-    model="$(arg model)"/>
+    model="$(arg model)"
+    update_rate="$(arg update_rate)"/>
 
 </robot>

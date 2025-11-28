@@ -49,6 +49,7 @@ collision:
     suction3: 0.00
     suction4: 0.00
     attached_object: 0.000
+    object_frame: 0.00
 
 self_collision:
   geometry: "m1013_vgc10_collision_spheres"
@@ -64,20 +65,21 @@ self_collision:
     link_6: ["tool0", "gripper_frame", "onrobot_vgc10_base_link"]
     tool0: ["gripper_frame", "onrobot_vgc10_base_link", "suction1", "suction2", "suction3", "suction4", "grasp_frame"]
     gripper_frame: ["onrobot_vgc10_base_link", "suction1", "suction2", "suction3", "suction4", "grasp_frame"]
-    onrobot_vgc10_base_link: ["suction1", "suction2", "suction3", "suction4", "grasp_frame"]
+    onrobot_vgc10_base_link: ["suction1", "suction2", "suction3", "suction4", "grasp_frame", "link_1", "link_2", "link_3", "link_4", "link_5","link_6"]
     suction1: ["suction2", "suction3", "suction4", "grasp_frame"]
     suction2: ["suction1", "suction3", "suction4", "grasp_frame"]
     suction3: ["suction1", "suction2", "suction4", "grasp_frame"]
     suction4: ["suction1", "suction2", "suction3", "grasp_frame"]
     grasp_frame: ["onrobot_vgc10_base_link", "suction1", "suction2", "suction3", "suction4"]
     attached_object: ["tool0", "gripper_frame", "onrobot_vgc10_base_link", "suction1", "suction2", "suction3", "suction4", "grasp_frame"]
+    object_frame: ["tool0", "gripper_frame", "onrobot_vgc10_base_link", "suction1", "suction2", "suction3", "suction4", "grasp_frame", "attached_object"]
 
 geometry:
   m1013_vgc10_collision_spheres:
     spheres:
       link_1:
         - center: [0.0, 0.0, -0.04]
-          radius: 0.1
+          radius: 0.0
         - center: [0.0, 0.007, 0.034]
           radius: 0.1
         - center: [0.0, 0.069, 0.001]
@@ -148,15 +150,15 @@ geometry:
         - center: [0.001, 0.0, -0.476]
           radius: 0.06
       link_5:
-        - center: [0.0, 0.004, 0.04]
-          radius: 0.073
-        - center: [0.0, -0.013, 0.0]
-          radius: 0.073
-        - center: [0.0, 0.037, 0.005]
-          radius: 0.073
+        - center: [0.0, 0.004, 0.05]
+          radius: 0.05
+        - center: [0.00, -0.013, 0.01]
+          radius: 0.055
+        - center: [0.0, 0.037, 0.01]
+          radius: 0.055
       link_6:
         - center: [-0.001, -0.001, -0.041]
-          radius: 0.06
+          radius: 0.045
 
       tool0:
         - center: [0.001, 0.001, 0.05]

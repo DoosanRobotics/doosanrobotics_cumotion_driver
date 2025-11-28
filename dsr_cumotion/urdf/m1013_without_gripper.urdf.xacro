@@ -16,7 +16,6 @@
   <xacro:arg name="gripper_prefix"      default=""/>
   <xacro:arg name="gripper_parent_link" default="vision_bracket"/>
 
-   world → base_link
   <link name="world"/>
   <joint name="world_fixed" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0"/>

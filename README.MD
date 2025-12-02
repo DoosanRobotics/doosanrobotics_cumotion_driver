@@ -1,27 +1,31 @@
 
-# Doosan ROS2 + Isaac ROS 통합 환경 구성 가이드
+---
+# Doosan ROS2 + Isaac ROS Integrated Environment Setup Guide
+
+This guide describes how to configure and build a unified development environment that integrates **Doosan ROS2** with **NVIDIA Isaac ROS** using Docker.
+
 ---
 
-## 1. docker / scripts 폴더 배치
+## 1. Placing the `docker` / `scripts` Directories
 
-먼저, Doosan 통합에 필요한 다음 디렉토리들을
-`ros2_ws/src/cumotion/` 에서 **Isaac ROS 워크스페이스의 상위 디렉토리(ISAAC_ROS_WS/../)** 로 복사합니다.
+First, copy the following directories required for Doosan integration  
+from `ros2_ws/src/cumotion/` to the **parent directory of the Isaac ROS workspace (`ISAAC_ROS_WS/../`)**.
 
-### 복사 대상 폴더
+### Directories to Copy
 
-* `docker/`
-* `scripts/`
+- `docker/`
+- `scripts/`
 
-### 복사 명령어 예시
+### Example Copy Commands
 
 ```bash
 cp -r ~/ros2_ws/src/cumotion/docker   ~/workspaces/
 cp -r ~/ros2_ws/src/cumotion/scripts ~/workspaces/
-```
+````
 
-### 복사 후 디렉토리 구조 예시
+### Example Directory Structure After Copy
 
-```
+```text
 workspaces/
 ├── isaac_ros-dev/          # ISAAC_ROS_WS
 ├── docker/
@@ -30,15 +34,15 @@ workspaces/
 
 ---
 
-## 2. Isaac ROS CLI 설정 파일 생성
+## 2. Creating the Isaac ROS CLI Configuration File
 
-다음 명령으로 Isaac ROS CLI 설정 디렉토리를 생성합니다.
+Create the Isaac ROS CLI configuration directory using the following command:
 
 ```bash
 mkdir -p ~/workspaces/isaac_ros-dev/.isaac-ros-cli
 ```
 
-그 다음 아래 내용을 포함한 `config.yaml` 파일을 생성합니다.
+Then create a `config.yaml` file with the following content:
 
 ### `~/workspaces/isaac_ros-dev/.isaac-ros-cli/config.yaml`
 
@@ -52,31 +56,33 @@ docker:
       - doosan
 ```
 
-### 설정 설명
+### Configuration Description
 
-이 설정은 Docker 이미지 빌드 시 다음 순서로 레이어가 결합되도록 합니다:
+This configuration ensures that Docker image layers are combined in the following order during the build process:
 
-1. **noble** (기본 OS + CUDA)
-2. **ros2_jazzy** (Isaac ROS ROS2 레이어)
-3. **doosan** (사용자 정의 Doosan 통합 레이어)
+1. **noble** – Base OS + CUDA
+2. **ros2_jazzy** – Isaac ROS ROS2 Layer
+3. **doosan** – User-defined Doosan Integration Layer
 
 ---
 
-## 3. Docker 이미지 생성
+## 3. Building the Docker Image
 
-설정이 준비되면 다음 명령을 실행하여 통합된 Isaac+Doosan 개발 이미지를 생성합니다.
+Once the setup is complete, run the following command to generate the integrated Isaac + Doosan development image:
 
 ```bash
 isaac-ros activate --build-local
 ```
 
-### 실행 후 동작
+### What Happens After Execution
 
-* `noble → ros2_jazzy → doosan` 순으로 Dockerfile 레이어가 병합됨
-* 새로운 통합 Docker 이미지가 자동 생성됨
-* 컨테이너가 자동 실행되며
-  `/usr/local/bin/scripts/entrypoint_additions` 내부 스크립트가 실행됨
-* `00-build-doosan.user.sh` 스크립트가 자동 실행되어
-  **Isaac ROS + Doosan ROS2 workspace 전체가 자동으로 colcon build 됨**
+* Dockerfile layers are merged in the following order:
+  `noble → ros2_jazzy → doosan`
+* A new integrated Docker image is automatically created
+* The container is automatically launched
+* Scripts inside `/usr/local/bin/scripts/entrypoint_additions` are executed
+* The `00-build-doosan.user.sh` script is automatically executed, which triggers:
+  **A full `colcon build` of the entire Isaac ROS + Doosan ROS2 workspace**
 
 ---
+

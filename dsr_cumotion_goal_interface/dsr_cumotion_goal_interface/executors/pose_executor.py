@@ -117,6 +117,4 @@ class PoseExecutor(MoveItExecutorBase):
         req.goal_constraints = [goal]
 
         description = f"Pose move: ({msg.x:.3f}, {msg.y:.3f}, {msg.z:.3f})"
-
-        # ✅ 핵심: on_complete 인자를 send_goal()까지 전달
         return self.send_goal(req, description, vel_scale, acc_scale, on_complete=on_complete)

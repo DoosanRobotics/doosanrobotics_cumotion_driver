@@ -117,7 +117,6 @@ class RelativeExecutor(PoseExecutor):
 
         except Exception as e:
             self.node.get_logger().error(f"[RelativeExecutor] Error: {e}")
-            # 실패 시 콜백 알림
             if on_complete:
                 on_complete(False)
             return False

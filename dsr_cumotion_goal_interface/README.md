@@ -1,20 +1,25 @@
 
 ---
 
-````markdown
-# Step 3. Command Publishing (Topic / Action)
+# Step 3. Motion Command Publishing (Topic and Service Interfaces)
 
 ## Overview
-This section describes how to send motion commands to the Doosan robot through the `/target_pose` topic.
 
-- **Topic:** `/target_pose`  
-- **Message type:** `dsr_cumotion/TargetPose2`  
-- The command is processed internally by **MoveIt 2 + cuMotion + Doosan Controller**.  
-- `max_vel_scale` and `max_acc_scale` define relative velocity and acceleration scaling (range: 0.0–1.0).
+This section describes how to send motion commands to the Doosan robot via ROS 2 topic and service interfaces.
+
+### Topic Interface
+
+* **Topic Name:** `/target_pose`
+* **Message Type:** `dsr_cumotion_msgs/TargetPose`
+* Motion commands published to this topic are processed through the following pipeline:
+  **MoveIt 2 → cuMotion → Doosan Controller**
+* `max_vel_scale` and `max_acc_scale` define relative velocity and acceleration scaling factors.
+
+  * Valid range: `0.0` to `1.0`
 
 ---
 
-## 3-1. Pose Command (Euler)
+## 3.1 Pose Command (Euler Representation)
 
 ```bash
 ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
@@ -22,14 +27,17 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
   x: 0.0, y: 0.0, z: 0.0,
   rx: 0.0, ry: 0.0, rz: 0.0,
   max_vel_scale: 0.5, max_acc_scale: 0.4}" --once
-````
+```
 
-* `rx`, `ry`, `rz`: Euler angles (degrees, ZYX order).
-* Use when defining orientation in Euler form.
+**Description**
+
+* `rx`, `ry`, `rz` represent Euler angles in **degrees**.
+* Rotation order follows the **ZYX convention**.
+* Use this format when defining orientation using Euler angles.
 
 ---
 
-## 3-2. Pose Command (Quaternion)
+## 3.2 Pose Command (Quaternion Representation)
 
 ```bash
 ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
@@ -39,12 +47,14 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
   max_vel_scale: 0.8, max_acc_scale: 0.6}" --once
 ```
 
-* Define orientation using quaternion values.
-* **Do not mix Euler and quaternion fields.**
+**Description**
+
+* Orientation is defined using quaternion values.
+* Euler and quaternion fields **must not be used together** in the same command.
 
 ---
 
-## 3-3. Joint Command
+## 3.3 Joint Space Command
 
 ```bash
 ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
@@ -53,12 +63,14 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
   max_vel_scale: 0.6, max_acc_scale: 0.4}" --once
 ```
 
-* Joint angles are specified in **degrees**.
-* Orientation fields are not required.
+**Description**
+
+* Joint values must be specified in **degrees**.
+* Position and orientation fields are not required for this command type.
 
 ---
 
-## 3-4. Named Command (Predefined Pose)
+## 3.4 Named Pose Command (Predefined Target)
 
 ```bash
 ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
@@ -66,11 +78,14 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
   max_vel_scale: 0.6, max_acc_scale: 0.5}" --once
 ```
 
-* Executes a predefined pose (e.g., `HOME`, `SET`).
+**Description**
+
+* Executes a predefined named pose.
+* Typical examples include `HOME`, `SET`, or other configured poses.
 
 ---
 
-## 3-5. Relative Command (TCP Frame)
+## 3.5 Relative Motion Command (TCP Frame)
 
 ```bash
 ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
@@ -80,13 +95,27 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/TargetPose \
   max_vel_scale: 0.5, max_acc_scale: 0.5}" --once
 ```
 
-* Moves the robot **relative to the current TCP (tool frame)**.
-* `dx`, `dy`, `dz`: translational offsets in meters.
-* `drx`, `dry`, `drz`: rotational offsets in degrees.
-* Internally converted to an absolute pose in the `base_link` frame before execution.
+**Description**
+
+* The motion is executed **relative to the current TCP (tool frame)**.
+* `dx`, `dy`, `dz`: translational offsets in **meters**
+* `drx`, `dry`, `drz`: rotational offsets in **degrees**
+* The relative command is internally converted into an absolute pose in the `base_link` frame before execution.
 
 ---
 
+# Step 4. Pick and Place Service Interface
+
+The following service interface triggers a predefined pick-and-place sequence.
+
+* **Service Name:** `/pick_place_command`
+* **Service Type:** `dsr_cumotion_msgs/srv/PickPlace`
+
+---
+
+## 4.1 Pick Operation Command
+
+```bash
 ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
   mode: 0,
   dx: 0.0,
@@ -99,8 +128,20 @@ ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
   acc: 0.5,
   sequence: 1
 }"
+```
 
+**Description**
 
+* `mode: 0` selects **pick operation mode**.
+* Relative motion offsets are applied before execution.
+* `vel` and `acc` define velocity and acceleration scaling.
+* `sequence` specifies the execution step index.
+
+---
+
+## 4.2 Place Operation Command
+
+```bash
 ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
   mode: 1,
   dx: 0.0,
@@ -113,3 +154,11 @@ ros2 service call /pick_place_command dsr_cumotion_msgs/srv/PickPlace "{
   acc: 0.5,
   sequence: 1
 }"
+```
+
+**Description**
+
+* `mode: 1` selects **place operation mode**.
+* Other parameters follow the same convention as the pick command.
+
+---

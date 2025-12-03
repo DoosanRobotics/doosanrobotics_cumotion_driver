@@ -8,9 +8,7 @@ This document describes the complete procedure to configure and build an integra
 
 This section describes the preparation of the Jetson platform, Isaac ROS workspace, and Doosan ROS 2 integration environment.
 
----
-
-## 1. System Environment
+## 1.1 System Environment
 
 | Component | Version         |
 | --------- | --------------- |
@@ -19,21 +17,18 @@ This section describes the preparation of the Jetson platform, Isaac ROS workspa
 | ROS 2     | Jazzy           |
 | Hardware  | Jetson AGX Thor |
 
----
 
-## 2. Jetson Thor and JetPack Preparation
+## 1.2 Jetson Thor and JetPack Preparation
 
 The following steps must be completed **in order** before proceeding.
 
-### 2.1 Jetson Thor Flashing and JetPack Installation
+### 1.3 Jetson Thor Flashing and JetPack Installation
 
 Follow the official NVIDIA documentation to flash Jetson Thor and install JetPack 7.0:
 
 [https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/index.html](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/index.html)
 
----
-
-### 2.2 Isaac ROS Setup for Jetson Thor
+### 1.3 Isaac ROS Setup for Jetson Thor
 
 Complete the Isaac ROS environment setup for Jetson Thor using the following documentation:
 
@@ -47,9 +42,8 @@ For this project, the Isaac ROS workspace must be configured as follows:
 export ISAAC_ROS_WS="${HOME}/workspaces/isaac_ros-dev/"
 ```
 
----
 
-## 3. Isaac ROS Workspace Creation
+## 1.4 Isaac ROS Workspace Creation
 
 ```bash
 mkdir -p ~/workspaces/isaac_ros-dev/src
@@ -58,18 +52,8 @@ source ~/.bashrc
 cd ~/workspaces/isaac_ros-dev/src
 ```
 
----
 
-## 4. Git LFS Installation
-
-```bash
-sudo apt-get install -y git-lfs
-git lfs install
-```
-
----
-
-## 5. Isaac ROS and cuMotion Source Installation (Release 4.0)
+## 1.5 Isaac ROS and cuMotion Source Installation (Release 4.0)
 
 ```bash
 cd ~/workspaces/isaac_ros-dev/src
@@ -88,9 +72,9 @@ https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_cumotion.git isaac_ros_cumotion
 
 All repositories **must be checked out to the `release-4.0` branch** to ensure compatibility.
 
----
 
-## 6. Doosan ROS 2 and cuMotion Driver Installation
+
+## 1.6 Doosan ROS 2 and cuMotion Driver Installation
 
 ```bash
 mkdir -p ~/ros2_ws/src
@@ -100,14 +84,9 @@ git clone -b jazzy https://github.com/DoosanRobotics/doosan-robot2.git
 git clone -b jetson_thor https://github.com/DoosanRobotics/doosanrobotics_cumotion_driver.git
 ```
 
-| Repository                       | Branch        |
-| -------------------------------- | ------------- |
-| `doosan-robot2`                  | `jazzy`       |
-| `doosanrobotics_cumotion_driver` | `jetson_thor` |
 
----
 
-## 7. Docker-Based Isaac ROS and Doosan ROS 2 Integration
+## 1.7 Docker-Based Isaac ROS and Doosan ROS 2 Integration
 
 ### 7.1 Copying the `docker/` and `scripts/` Directories
 

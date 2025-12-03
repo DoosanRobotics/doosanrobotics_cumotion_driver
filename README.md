@@ -229,7 +229,7 @@ The main entry point to start the integrated environment (Doosan + cuMotion)
 
 ```bash
 ros2 launch dsr_cumotion start_cumotion.launch.py \
-  mode:=real host:=192.168.137.100 enable_nvblox:=false gripper:=true
+  mode:=real host:=192.168.137.100 gripper:=true
 ```
 
 **Virtual Mode (connects to emulator or simulation):**
@@ -243,7 +243,7 @@ ros2 launch dsr_cumotion start_cumotion.launch.py \
 
 * `mode` — `real` for physical robot, `virtual` for emulator/simulation.
 * `host` — Controller IP (real robot) or emulator host (`127.0.0.1` for local).
-* `gripper` — Must be `true` to load the VGC10-equipped model.
+* `gripper` — Arguments about end-effector model (default: 'none' (only manipulator model | vgc10 | 2f85))
 * `enable_cumotion` — Enables cuMotion-based motion planning (default: `true`).
 * `enable_attach` — Enables object attachment handling (default: `true`).
 * `use_sim_time` — `false` for real robot; `true` only for simulation environments.
@@ -255,8 +255,26 @@ ros2 launch dsr_cumotion start_cumotion.launch.py \
 
 ---
 
-# Step 3. Command Publishing (Topic / Action)
+### 2.2 Gripper Mode Configuration
 
+The `gripper` argument controls which end-effector model is attached to the robot in **URDF**, **SRDF**, and **cuMotion** configurations.
+
+#### Supported Gripper Types
+
+```bash
+gripper:=none    # Robot only (default)
+gripper:=vgc10   # Robot + OnRobot VGC10 vacuum gripper
+gripper:=2f85    # Robot + Robotiq 2F-85 gripper (virtual only)
+```
+**Warning:**
+
+  **Robotiq 2F-85 is restricted to `virtual` mode only.**  
+  If the following configuration is used, the launch system will **terminate with an error**:  
+  When using **`gripper:=vgc10`**, the **gripper controller is NOT launched automatically**.  
+  The VGC10 controller **must be executed separately using an external control node or hardware driver**.
+
+
+# Step 3. Command Publishing (Topic / Action)
 ## Overview
 This section describes how to send motion commands to the Doosan robot through **dedicated topics** for each motion type.
 

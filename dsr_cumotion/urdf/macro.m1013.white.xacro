@@ -251,6 +251,21 @@
       </visual>
     </link>
 
+    <link name="tool0"/>
+    <joint name="joint_6-tool0" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="link_6"/>
+      <child link="tool0"/>
+    </joint>
+
+    <!-- Gripper Frame -->
+    <link name="gripper_frame"/>
+    <joint name="gripper_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="tool0"/>
+      <child  link="gripper_frame"/>
+    </joint>
+    
     <!-- <joint name="vision_bracket_joint" type="fixed">
       <parent link="tool0"/>
       <child link="vision_bracket"/>

@@ -426,7 +426,7 @@
   </joint>
   <!-- Gripper Frame -->
   <link name="gripper_frame"/>
-  <joint name="tool0_to_gripper_frame" type="fixed">
+  <joint name="gripper_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="tool0"/>
     <child link="gripper_frame"/>

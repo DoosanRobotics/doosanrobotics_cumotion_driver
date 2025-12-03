@@ -246,7 +246,7 @@
     <child link="tool0"/>
   </joint>
 
-  <joint name="vision_bracket_joint" type="fixed">
+  <!-- <joint name="vision_bracket_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="tool0"/>
     <child link="vision_bracket"/>
@@ -274,7 +274,7 @@
     <origin xyz="0 0.12 0.0455" rpy="0 0 0"/>
     <parent link="vision_bracket"/>
     <child link="d435i_camera"/>
-  </joint>
+  </joint> -->
 
   <!-- base -->
   <link name="robotiq_85_base_link">
@@ -375,7 +375,7 @@
 
   <!-- joints: gripper base fixed to vision_bracket -->
   <joint name="robotiq_85_base_joint" type="fixed">
-    <parent link="vision_bracket"/>
+    <parent link="gripper_frame"/>
     <child  link="robotiq_85_base_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
@@ -455,8 +455,8 @@
 
   <joint name="gripper_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
-    <parent link="robotiq_85_base_link"/>
-    <child  link="gripper_frame"/>
+    <parent link="tool0"/>
+    <child link="gripper_frame"/>
   </joint>
 
   <link name="grasp_frame">

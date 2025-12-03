@@ -145,5 +145,33 @@
     <child link="suction4"/>
     <axis xyz="1 0 0"/>
   </joint>
+
+  <joint name="gripper_to_vgc10" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="gripper_frame"/>
+    <child  link="onrobot_vgc10_base_link"/>
+  </joint>
+
+  <link name="grasp_frame"/>
+  <joint name="grasp_joint" type="fixed">
+    <origin xyz="0 0 0.12" rpy="0 0 0"/>
+    <parent link="gripper_frame"/>
+    <child  link="grasp_frame"/>
+  </joint>
+
+  <link name="object_frame">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="object_joint" type="fixed">
+    <origin xyz="0 0 0.07" rpy="0 0 0"/>
+    <parent link="grasp_frame"/>
+    <child link="object_frame"/>
+  </joint>
+
 </robot>
 

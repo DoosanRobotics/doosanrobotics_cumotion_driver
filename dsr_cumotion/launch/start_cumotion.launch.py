@@ -4,6 +4,7 @@ import yaml
 from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, DeclareLaunchArgument, LogInfo, OpaqueFunction, SetLaunchConfiguration, TimerAction, IncludeLaunchDescription
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration,PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnProcessExit
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -12,31 +13,48 @@ from moveit_configs_utils import MoveItConfigsBuilder
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from dsr_bringup2.utils import read_update_rate
 
+def validate_gripper_mode(context):
+    mode = str(LaunchConfiguration("mode").perform(context)).lower()
+    gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
+
+    if mode == "real" and gripper == "2f85":
+        raise RuntimeError(
+            "[LAUNCH ERROR] Robotiq 2F-85 is only supported in VIRTUAL mode!"
+        )
+    return []
 
 # Generate MoveIt2 + RViz node (CuMotion integrated)
 def get_moveit_group_node(context):
     model = LaunchConfiguration("model").perform(context)
-    use_sim = str(LaunchConfiguration("use_sim_time").perform(context)).lower()
-    use_sim_bool = use_sim in ["true", "1", "yes"]
+    use_sim_time = str(LaunchConfiguration("use_sim_time").perform(context)).lower()
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     pkg_share = get_package_share_directory("dsr_cumotion")
 
     # File paths
     controller_file = os.path.join(pkg_share, "config", "moveit_controllers.yaml")
     kinematics_file = os.path.join(pkg_share, "config", "kinematics.yaml")
-    joint_limits_file = os.path.join(pkg_share, "config", "joint_limits.yaml")
-    urdf_file = "m1013_with_vgc10.urdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.urdf.xacro"
-    srdf_file = "m1013_with_vgc10.srdf.xacro" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.srdf.xacro"
-    urdf_path = os.path.join(pkg_share, "urdf", urdf_file)
-    srdf_path = os.path.join(pkg_share, "srdf", srdf_file)
+    urdf_path = os.path.join(pkg_share, "urdf", f"{model}.urdf.xacro")
+    srdf_path = os.path.join(pkg_share, "srdf", f"{model}.srdf.xacro")
 
     # Build MoveIt configuration
     moveit_config = (
         MoveItConfigsBuilder(model, package_name="dsr_cumotion")
-        .robot_description(file_path=urdf_path)
-        .robot_description_semantic(file_path=srdf_path)
+        .robot_description(
+            file_path=urdf_path,
+            mappings={
+                "model": model,
+                "color": LaunchConfiguration("color"),
+                "gripper": gripper,
+            },
+        )
+        .robot_description_semantic(
+            file_path=srdf_path,
+            mappings={
+                "model": model,
+                "gripper": gripper,
+            },
+        )
         .robot_description_kinematics(file_path=kinematics_file)
-        # .joint_limits(file_path=joint_limits_file)
         .trajectory_execution(file_path=controller_file)
         .to_moveit_configs()
     )
@@ -58,12 +76,13 @@ def get_moveit_group_node(context):
     moveit_config.planning_pipelines["ompl"] = ompl_config
     moveit_config.planning_pipelines["default_planning_pipeline"] = "isaac_ros_cumotion"
 
-    if use_sim_bool:
+    if use_sim_time == "true":
         moveit_config.trajectory_execution["trajectory_execution"]["allowed_start_tolerance"] = 0.01
-
-    moveit_config.moveit_cpp.update({"use_sim_time": use_sim_bool})
+        moveit_config.moveit_cpp.update({"use_sim_time": True})
+    else:
+        moveit_config.moveit_cpp.update({"use_sim_time": False})
     moveit_dict = moveit_config.to_dict()
-    # moveit_dict["capabilities"] = "move_group/ExecuteTaskSolutionCapability"
+    moveit_dict["capabilities"] = "move_group/ExecuteTaskSolutionCapability"
 
     # MoveGroup node
     move_group_node = Node(
@@ -73,7 +92,6 @@ def get_moveit_group_node(context):
         parameters=[moveit_dict],
         arguments=["--ros-args", "--log-level", "info"],
     )
-
     nodes = [move_group_node]
 
     # Optionally include RViz2
@@ -86,27 +104,44 @@ def get_moveit_group_node(context):
             name="rviz2",
             output="log",
             arguments=["-d", rviz_config],
-            parameters=[moveit_dict, {"use_sim_time": use_sim_bool}],
+            parameters=[moveit_dict],
         )
         nodes.append(rviz_node)
     return nodes
 
 # Include CuMotion pipeline (Isaac ROS CuMotion)
 def get_cumotion_node(context):
+    model = LaunchConfiguration("model").perform(context)
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     enable_cumotion = str(LaunchConfiguration("enable_cumotion").perform(context)).lower()
     enable_attach = str(LaunchConfiguration("enable_attach").perform(context)).lower()
 
     pkg_share = get_package_share_directory("dsr_cumotion")
     nodes = []
-    urdf = "m1013_with_vgc10.urdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.urdf"
-    xrdf = "m1013_with_vgc10.xrdf" if gripper in ["true", "1", "yes"] else "m1013_without_gripper.xrdf"
+
+    if gripper == "none":
+        urdf = f"{model}_without_gripper.urdf"
+        xrdf = f"{model}_without_gripper.xrdf"
+
+    elif gripper == "vgc10":
+        urdf = f"{model}_with_vgc10.urdf"
+        xrdf = f"{model}_with_vgc10.xrdf"
+
+    elif gripper == "2f85":
+        urdf = f"{model}_with_2f85.urdf"
+        xrdf = f"{model}_with_2f85.xrdf"
+
+    else:
+        raise RuntimeError(f"Invalid gripper type: {gripper}")
+
     urdf_path = os.path.join(pkg_share, "urdf", urdf)
     xrdf_path = os.path.join(pkg_share, "xrdf", xrdf)
 
     if enable_cumotion in ["true", "1", "yes"]:
         cumotion_launch = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(pkg_share, "launch", "include", "cumotion.launch.py")),
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_share, "launch", "include", "cumotion.launch.py")
+            ),
             launch_arguments={
                 "camera_type": "isaac_sim",
                 "num_cameras": "1",
@@ -117,7 +152,6 @@ def get_cumotion_node(context):
                 "joint_states_topic": "/joint_states",
                 "urdf_file_path": urdf_path,
                 "robot_file_name": xrdf_path,
-                "gripper": gripper,
             }.items(),
         )
         nodes.append(cumotion_launch)
@@ -132,54 +166,18 @@ def get_cumotion_node(context):
         nodes.append(static_depth_node)
     return nodes
 
-# Include NVBlox mapping pipeline
-# def get_nvblox_node(context):
-#     use_sim_bool = str(LaunchConfiguration("use_sim_time").perform(context)).lower() in ["true", "1", "yes"]
-#     enable_nvblox = str(LaunchConfiguration("enable_nvblox").perform(context)).lower()
-#     nodes = []
-
-#     if enable_nvblox in ["true", "1", "yes"]:
-#         launch_dir = os.path.join(get_package_share_directory("dsr_cumotion"), "launch", "include")
-#         nvblox_launch = IncludeLaunchDescription(
-#             PythonLaunchDescriptionSource([launch_dir, "/nvblox.launch.py"]),
-#             launch_arguments={
-#                 "camera_type": "isaac_sim",
-#                 "use_sim_time": str(use_sim_bool),
-#                 "workspace_bounds_name": "workbound_test",
-#             }.items(),
-#         )
-#         nodes.append(nvblox_launch)
-#     return nodes
-
-
-def set_urdf_xacro_fn(context):
-    model = LaunchConfiguration("model").perform(context)
-    gripper = str(LaunchConfiguration("gripper").perform(context)).lower() in [
-        "true",
-        "1",
-        "yes",
-    ]
-    urdf_file = (
-        f"{model}_with_vgc10.urdf.xacro" if gripper else f"{model}_without_gripper.urdf.xacro"
-    )
-    xacro_path = os.path.join(
-        get_package_share_directory("dsr_cumotion"), "urdf", urdf_file
-    )
-    return [SetLaunchConfiguration("urdf_xacro_path", xacro_path)]
-
 def control_node_fn(context):
     name = LaunchConfiguration("name")
-    robot_description_param = {
-        "robot_description": ParameterValue(
-            LaunchConfiguration("robot_description"), value_type=str
-        )
-    }
+    gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
+    robot_description_param = {"robot_description": ParameterValue(LaunchConfiguration("robot_description"), value_type=str)}
     pkg_share = get_package_share_directory('dsr_cumotion')
     pkg_share_dsr = get_package_share_directory("dsr_controller2")
     controller_yaml_path = os.path.join(pkg_share_dsr, "config", "dsr_controller2.yaml")
-    # gripper_yaml = os.path.join(pkg_share, "config", "robotiq_controller.yaml")
 
     params = [robot_description_param, controller_yaml_path]
+    if gripper == "2f85":
+        gripper_yaml = os.path.join(pkg_share, "config", "robotiq_controller.yaml")
+        params.append(gripper_yaml)
 
     node = Node(
         package="controller_manager",
@@ -189,6 +187,19 @@ def control_node_fn(context):
         output="both",
     )
     return [node]
+
+def gripper_spawner_fn(context):
+    if LaunchConfiguration("gripper").perform(context) != "2f85":
+        return []
+    return [
+        Node(
+            package="controller_manager",
+            namespace=LaunchConfiguration("name"),
+            executable="spawner",
+            arguments=["gripper_position_controller", "-c", "controller_manager"],
+            output="screen",
+        )
+    ]
 
 def obstacle_manager_fn(context):
     obstacle_flag = str(LaunchConfiguration("obstacle").perform(context)).lower() in ["true","1","yes",]
@@ -218,21 +229,19 @@ def generate_launch_description():
         DeclareLaunchArgument("gz", default_value="false", description="Use Gazebo"),
         DeclareLaunchArgument("rt_host", default_value="192.168.137.100", description="RT IP"),
         DeclareLaunchArgument("use_sim_time", default_value="false", description="Use sim time"),
-        DeclareLaunchArgument("gripper", default_value="true", description="GRIPPER"),
+        DeclareLaunchArgument("gripper", default_value="none", description="GRIPPER type"),
         DeclareLaunchArgument("obstacle", default_value="true", description="Obstacle using moveit planningscene"),
-        # DeclareLaunchArgument("enable_nvblox", default_value="false", description="Enable nvblox node"),
         DeclareLaunchArgument("enable_cumotion", default_value="true", description="Enable cumotion node"),
         DeclareLaunchArgument("enable_attach", default_value="true", description="Enable object_attach node"),
     ]
 
-    set_urdf_xacro = OpaqueFunction(function=set_urdf_xacro_fn)
     update_rate = str(read_update_rate()) # get update_rate from yaml
 
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
-            LaunchConfiguration("urdf_xacro_path"),
+            PathJoinSubstitution([FindPackageShare("dsr_cumotion"),"urdf","m1013.urdf.xacro"]),
             " name:=",LaunchConfiguration("name"),
             " host:=",LaunchConfiguration("host"),
             " rt_host:=",LaunchConfiguration("rt_host"),
@@ -240,10 +249,10 @@ def generate_launch_description():
             " mode:=",LaunchConfiguration("mode"),
             " model:=",LaunchConfiguration("model"),
             " color:=",LaunchConfiguration("color"),
-            " update_rate:=", "50",
+            " update_rate:=", update_rate,
+            " gripper:=", LaunchConfiguration("gripper"),
         ]
     )
-
     set_robot_description = SetLaunchConfiguration("robot_description", robot_description_content)
 
     run_emulator = Node(
@@ -328,10 +337,9 @@ def generate_launch_description():
     )
 
     cumotion = OpaqueFunction(function=get_cumotion_node)
-    # nvblox = OpaqueFunction(function=get_nvblox_node)
     moveit_group = OpaqueFunction(function=get_moveit_group_node)
     obstacle = OpaqueFunction(function=obstacle_manager_fn)
-
+    validation_guard = OpaqueFunction(function=validate_gripper_mode)
 
     delay_dsr_controller_after_jsb = RegisterEventHandler(
         OnProcessExit(
@@ -348,7 +356,7 @@ def generate_launch_description():
             target_action=dsr_controller,
             on_exit=[
                 LogInfo(msg=">>  dsr_controller active. Launching moveit_controller..."),
-                dsr_moveit_controller
+                dsr_moveit_controller, OpaqueFunction(function=gripper_spawner_fn)
             ],
         )
     )
@@ -405,8 +413,7 @@ def generate_launch_description():
     return LaunchDescription(
         args
         + [
-            # manipulator_container,
-            set_urdf_xacro,
+            validation_guard,
             set_robot_description,
             run_emulator,
             control_node, 
@@ -419,13 +426,5 @@ def generate_launch_description():
             delay_server_after_moveit_controller,
             delay_cumotion_after_moveit_controller,
             delay_moveit_after_moveit_controller,
-            # TimerAction(period=5.0, actions=[joint_state_broadcaster]),
-            # TimerAction(period=7.0, actions=[dsr_controller]),
-            # TimerAction(period=9.0, actions=[dsr_moveit_controller]),
-            # TimerAction(period=11.0, actions=[cumotion]),
-            # TimerAction(period=15.0, actions=[moveit_group]),
-            # TimerAction(period=17.0, actions=[motion_command]),
-            # TimerAction(period=18.0, actions=[pick_place_server]),
-            # TimerAction(period=20.0, actions=[obstacle]),
         ]
     )

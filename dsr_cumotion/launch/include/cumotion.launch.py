@@ -151,25 +151,9 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('num_cameras', 1)
     args.add_arg('workspace_bounds_name', '')
     args.add_arg('use_sim_time', False)
-    args.add_arg('gripper', True)
 
-    gripper = lu.is_true(args.gripper)
-
-    if gripper:
-        urdf_file_name = "m1013_with_vgc10.urdf"
-        xrdf_file_name = "m1013_with_vgc10.xrdf"
-
-    else:
-        urdf_file_name = "m1013_without_gripper.urdf"
-        xrdf_file_name = "m1013_without_gripper.xrdf"
-
-    default_urdf_file_path = os.path.join(
-        get_package_share_directory("dsr_cumotion"), "urdf", urdf_file_name)
-    default_xrdf_file_path = os.path.join(
-        get_package_share_directory("dsr_cumotion"), "xrdf", xrdf_file_name)
-
-    args.add_arg('urdf_file_path', cli=True, default=default_urdf_file_path)
-    args.add_arg('robot_file_name', cli=True, default=default_xrdf_file_path)
+    args.add_arg('urdf_file_path', cli=True, default='')
+    args.add_arg('robot_file_name', cli=True, default='')
     args.add_arg('time_dilation_factor', cli=True, default='0.25')
     args.add_arg('max_attempts', cli=True, default='20')
     args.add_arg('num_graph_seeds', cli=True, default='6')

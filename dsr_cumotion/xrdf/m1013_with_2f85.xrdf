@@ -25,7 +25,7 @@ default_joint_positions:
   joint_5: 0.0
   joint_6: 0.0
 
-tool_frames: ["grasp_frame"] # cumotion_planner_node.yaml의 tool_frames과 동일하게 설정
+tool_frames: ["grasp_frame"]
 
 cspace:
   joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
@@ -42,8 +42,6 @@ collision:
     link_5: 0.01
     link_6: 0.01
     tool0: 0.01
-    vision_bracket: 0.01
-    d435i_camera: 0.01
     robotiq_85_base_link: 0.005
     robotiq_85_left_finger_link: 0.005
     robotiq_85_left_finger_tip_link: 0.005
@@ -54,9 +52,6 @@ collision:
     robotiq_85_right_inner_knuckle_link: 0.005
     robotiq_85_right_knuckle_link: 0.005
     attached_object: 0.005
-
-
-
 
 self_collision:
   geometry: "m1013_collision_spheres"
@@ -79,52 +74,45 @@ self_collision:
       - "tool0"
       - "robotiq_85_base_link"
       - "gripper_frame"
-      - "vision_bracket"
-      - "d435i_camera"
 
-    tool0: ['vision_bracket', 'd435i_camera',  'robotiq_85_base_link', 'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link',
+    tool0: ['robotiq_85_base_link', 'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link',
     'robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
     'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', 'gripper_frame', 'grasp_frame']
 
-    vision_bracket: ['d435i_camera', 'robotiq_85_base_link', 'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link',
+    robotiq_85_base_link: ['tool0', 'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link',
     'robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
     'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', 'gripper_frame', 'grasp_frame']
 
-    robotiq_85_base_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link',
-    'robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
-    'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
-    'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', 'gripper_frame', 'grasp_frame']
-
-    robotiq_85_left_finger_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_left_finger_tip_link',
+    robotiq_85_left_finger_link: ['tool0', 'robotiq_85_left_finger_tip_link',
     'robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
     'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', 'gripper_frame', 'grasp_frame', "robotiq_85_base_link"]
 
-    robotiq_85_left_finger_tip_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
+    robotiq_85_left_finger_tip_link: ['tool0','robotiq_85_left_inner_knuckle_link', 'robotiq_85_left_knuckle_link',
     'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', "robotiq_85_right_inner_knuckle_link" , 'gripper_frame', 'grasp_frame']
 
-    robotiq_85_left_inner_knuckle_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_left_knuckle_link',
+    robotiq_85_left_inner_knuckle_link: ['tool0', 'robotiq_85_left_knuckle_link',
     'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link', "robotiq_85_left_finger_tip_link" , 'gripper_frame', 'grasp_frame']
 
-    robotiq_85_left_knuckle_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
+    robotiq_85_left_knuckle_link: ['tool0', 'robotiq_85_right_finger_link', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link' , 'gripper_frame', 'grasp_frame']
 
-    robotiq_85_right_finger_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_right_finger_tip_link',
+    robotiq_85_right_finger_link: ['tool0', 'robotiq_85_right_finger_tip_link',
     'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link' , 'gripper_frame', 'grasp_frame', "robotiq_85_base_link"]
 
-    robotiq_85_right_finger_tip_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_right_inner_knuckle_link', 
+    robotiq_85_right_finger_tip_link: ['tool0', 'robotiq_85_right_inner_knuckle_link', 
     'robotiq_85_right_knuckle_link', 'robotiq_85_left_inner_knuckle_link' , 'gripper_frame', 'grasp_frame']
 
-    robotiq_85_right_inner_knuckle_link: ['tool0', 'vision_bracket', 'd435i_camera', 'robotiq_85_right_knuckle_link', "robotiq_85_right_finger_tip_link" , 'gripper_frame', 'grasp_frame']
+    robotiq_85_right_inner_knuckle_link: ['tool0', 'robotiq_85_right_knuckle_link', "robotiq_85_right_finger_tip_link" , 'gripper_frame', 'grasp_frame']
 
     gripper_frame: ["grasp_frame"]
 
     attached_object: [
-    'link_5', 'link_6', 'tool0', 'vision_bracket', 'gripper_frame', 'grasp_frame', 'd435i_camera', 'robotiq_85_base_link', 
+    'link_5', 'link_6', 'tool0', 'gripper_frame', 'grasp_frame', 'robotiq_85_base_link', 
     'robotiq_85_left_finger_link', 'robotiq_85_left_finger_tip_link', 'robotiq_85_left_inner_knuckle_link', 
     'robotiq_85_left_knuckle_link', 'robotiq_85_right_finger_link', 
     'robotiq_85_right_finger_tip_link', 'robotiq_85_right_inner_knuckle_link', 'robotiq_85_right_knuckle_link']
@@ -218,32 +206,6 @@ geometry:
       tool0:
         - center: [0.001, 0.001, 0.05]
           radius: 0.001
-
-      vision_bracket:
-        - center: [0.000, 0.06, -0.002]
-          radius: 0.015
-        - center: [0.000, 0.08, -0.002]
-          radius: 0.015
-        - center: [0.000, 0.10, -0.002]
-          radius: 0.015
-        - center: [0.001, 0.12, -0.002]
-          radius: 0.015
-        - center: [0.02, 0.12, -0.001]
-          radius: 0.01
-        - center: [-0.02, 0.12, -0.001]
-          radius: 0.01
-
-      d435i_camera:
-        - center: [0.000, 0.000, -0.02]
-          radius: 0.01
-        - center: [0.02, 0.000, -0.02]
-          radius: 0.01
-        - center: [-0.02, 0.000, -0.02]
-          radius: 0.01
-        - center: [0.03, 0.000, -0.02]
-          radius: 0.01
-        - center: [-0.03, 0.000, -0.02]
-          radius: 0.01
 
       robotiq_85_base_link:
         - center: [0.0, 0.0, 0.04]

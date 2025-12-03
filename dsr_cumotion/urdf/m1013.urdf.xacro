@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="m1013">
+
+  <xacro:arg name="color"        default="white"/>
+  <xacro:arg name="gripper"      default="none"/>
+  <xacro:arg name="namespace"    default=""/>
+  <xacro:arg name="use_gazebo"   default="false"/>
+  <xacro:arg name="use_mujoco"   default="false"/>
+  <xacro:arg name="host"         default=""/>
+  <xacro:arg name="port"         default=""/>
+  <xacro:arg name="rt_host"      default=""/>
+  <xacro:arg name="mode"         default=""/>
+  <xacro:arg name="model"        default=""/>
+  <xacro:arg name="update_rate"  default=""/>
+  <xacro:property name="gripper" value="$(arg gripper)"/>
+  <!-- <xacro:property name="mode" value="$(arg mode)"/> -->
+
+  <xacro:include filename="$(find dsr_cumotion)/urdf/macro.m1013.white.xacro"/>
+  <xacro:m1013 namespace="$(arg namespace)"/>
+
+  <xacro:if value="${gripper == 'vgc10'}">
+    <xacro:include filename="$(find dsr_cumotion)/urdf/vgc10/onrobot_vgc10_4cups_model.urdf"/>
+  </xacro:if>
+
+  <xacro:if value="${gripper == '2f85'}">
+    <xacro:include filename="$(find dsr_cumotion)/urdf/robotiq/robotiq.xacro"/>
+    <xacro:robotiq_85/>
+
+    <xacro:include filename="$(find dsr_cumotion)/urdf/robotiq/robotiq.ros2_control.xacro"/>
+    <xacro:robotiq_gripper_system
+      mode="$(arg mode)"
+      joint_name="robotiq_85_left_knuckle_joint"
+      system_name="robotiq_gripper_system"
+      pos_min="0.0" pos_max="0.8" init_pos="0.0"
+      speed_mult="1.0" force_mult="0.5"
+      max_speed="0.150" max_force="235.0"
+      mock_sensor_commands="true"/>
+  </xacro:if>
+
+  <!-- ros2_control -->
+  <xacro:include filename="$(find dsr_cumotion)/urdf/m1013.ros2_control.xacro"/>
+  <xacro:m1013_ros2_control
+    name="m1013"
+    host="$(arg host)"
+    rt_host="$(arg rt_host)"
+    port="$(arg port)"
+    mode="$(arg mode)"
+    model="$(arg model)"
+    update_rate="$(arg update_rate)"/>
+</robot>

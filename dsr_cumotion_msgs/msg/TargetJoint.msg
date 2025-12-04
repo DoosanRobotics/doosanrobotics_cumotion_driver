@@ -1,7 +1,7 @@
 # TargetJoint.msg
 # Joint-space motion command (in radians)
 
-float64[] joint_position   # Target joint angles (rad)
+float64[] joints  # Target joint angles (rad)
 
 # Optional parameters
 float64 max_vel_scale      # Velocity scaling (0.0 ~ 1.0, 0 means default)

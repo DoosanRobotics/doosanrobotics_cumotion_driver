@@ -29,8 +29,9 @@ def get_moveit_group_node(context):
     use_sim_time = str(LaunchConfiguration("use_sim_time").perform(context)).lower()
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     pkg_share = get_package_share_directory("dsr_cumotion")
-
-    # File paths
+    enable_cumotion = (str(LaunchConfiguration("enable_cumotion").perform(context)).strip().lower()== "true"
+                       
+)    # File paths
     controller_file = os.path.join(pkg_share, "config", "moveit_controllers.yaml")
     kinematics_file = os.path.join(pkg_share, "config", "kinematics.yaml")
     urdf_path = os.path.join(pkg_share, "urdf", f"{model}.urdf.xacro")
@@ -59,22 +60,28 @@ def get_moveit_group_node(context):
         .to_moveit_configs()
     )
 
-    # Load CuMotion and OMPL configs
-    cumotion_path = os.path.join(pkg_share, "config", "isaac_ros_cumotion_planning.yaml")
     ompl_path = os.path.join(pkg_share, "config", "ompl_planning.yaml")
-    with open(cumotion_path) as f:
-        cumotion_config = yaml.safe_load(f)
     with open(ompl_path) as f:
         ompl_config = yaml.safe_load(f)
 
-    # Inject pipeline configurations
     pipelines = moveit_config.planning_pipelines.get("planning_pipelines", [])
     if isinstance(pipelines, list):
-        pipelines.insert(0, "isaac_ros_cumotion")
-        pipelines.insert(1, "ompl")
-    moveit_config.planning_pipelines["isaac_ros_cumotion"] = cumotion_config
+        pipelines.clear()
+        pipelines.append("ompl")
+
     moveit_config.planning_pipelines["ompl"] = ompl_config
-    moveit_config.planning_pipelines["default_planning_pipeline"] = "isaac_ros_cumotion"
+    moveit_config.planning_pipelines["default_planning_pipeline"] = "ompl"
+
+    if enable_cumotion:
+        cumotion_path = os.path.join(
+            pkg_share, "config", "isaac_ros_cumotion_planning.yaml"
+        )
+        with open(cumotion_path) as f:
+            cumotion_config = yaml.safe_load(f)
+
+        pipelines.insert(0, "isaac_ros_cumotion")
+        moveit_config.planning_pipelines["isaac_ros_cumotion"] = cumotion_config
+        moveit_config.planning_pipelines["default_planning_pipeline"] = "isaac_ros_cumotion"
 
     if use_sim_time == "true":
         moveit_config.trajectory_execution["trajectory_execution"]["allowed_start_tolerance"] = 0.01
@@ -202,20 +209,24 @@ def gripper_spawner_fn(context):
     ]
 
 def obstacle_manager_fn(context):
-    obstacle_flag = str(LaunchConfiguration("obstacle").perform(context)).lower() in ["true","1","yes",]
-    pkg_share = get_package_share_directory("dsr_cumotion")
-    yaml_path = os.path.join(pkg_share, "config", "obstacles.yaml")
-    nodes = []
-    if obstacle_flag:
-        obstacle_node = Node(
+    obstacle = str(LaunchConfiguration("obstacle").perform(context)).lower()
+    nodes=[]
+    if obstacle in ["true", "1", "yes"]:
+
+        pkg_share = get_package_share_directory("dsr_cumotion")
+        yaml_path = os.path.join(pkg_share, "config", "obstacles.yaml")
+
+        node=Node(
             package="dsr_cumotion",
             executable="obstacle_manager.py",
             name="obstacle_manager",
             output="screen",
             parameters=[{"config_file": yaml_path}],
         )
-        nodes.append(obstacle_node)
+        nodes.append(node)
     return nodes
+    
+
 
 def generate_launch_description():
     args = [

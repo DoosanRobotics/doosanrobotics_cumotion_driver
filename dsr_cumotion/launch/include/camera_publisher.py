@@ -6,28 +6,16 @@ from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Header
 import numpy as np
-
-
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 class CameraNode(Node):
-    """
-    This ROS 2 node continuously publishes a static depth image and a corresponding camera_info message.
-    It is mainly used as a dummy or simulated depth camera for testing other nodes (e.g., object attachment)
-    when no physical depth sensor is available.
-
-    - The published topics are:
-        /camera_info : Intrinsic parameters of the virtual camera
-        /depth       : A depth image where every pixel has the same constant distance
-
-    - The frame_id is set to 'tool0', meaning the camera is assumed to be located at the robot's tool frame.
-    - The depth image is encoded in 32FC1 (float32 per pixel, in meters).
-    """
-
     def __init__(self):
         super().__init__('static_depth_camera_node')
-    
+        qos = QoSProfile(
+        depth=10,
+        reliability=QoSReliabilityPolicy.RELIABLE)
         # Publishers: send both camera calibration info and depth image frames
-        self.info_pub = self.create_publisher(CameraInfo, '/camera_info', 10)
-        self.depth_pub = self.create_publisher(Image, '/depth', 10)
+        self.info_pub = self.create_publisher(CameraInfo, '/camera_info', qos)
+        self.depth_pub = self.create_publisher(Image, '/depth', qos)
 
         # Timer: publishes data periodically (10 Hz = every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.publish_topics)
@@ -38,8 +26,8 @@ class CameraNode(Node):
         # cx, cy: principal point coordinates (image center)
         self.width = 1280
         self.height = 720
-        self.fx = 921.1036902008507
-        self.fy = 921.1036902008507
+        self.fx = 600.0
+        self.fy = 600.0
         self.cx = 640.0
         self.cy = 360.0
 

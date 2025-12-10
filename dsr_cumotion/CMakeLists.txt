@@ -20,19 +20,10 @@ find_package(yaml_cpp_vendor REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(isaac_ros_common REQUIRED)
 
-# Message generation
-# rosidl_generate_interfaces(${PROJECT_NAME}
-#   "msg/TargetPose.msg"
-#   "msg/TargetPose2.msg"
-#   DEPENDENCIES std_msgs
-# )
-
 # Python executables
 install(PROGRAMS
-  launch/include/move_to_pose.py
   launch/include/camera_publisher.py
   launch/include/obstacle_manager.py
-  # launch/include/object_attach_client.py
   launch/include/pick_and_place_server.py
   DESTINATION lib/${PROJECT_NAME}
 )

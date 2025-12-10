@@ -12,7 +12,6 @@ from ..utils.math_utils import (
 )
 from .pose_executor import PoseExecutor
 
-
 class RelativeExecutor(PoseExecutor):
     """Executor for relative Cartesian movements (always in TCP/local coordinates)."""
 
@@ -102,12 +101,14 @@ class RelativeExecutor(PoseExecutor):
             pose_msg.max_vel_scale = getattr(msg, "max_vel_scale", 1.0)
             pose_msg.max_acc_scale = getattr(msg, "max_acc_scale", 1.0)
 
+            pose_msg.retry_num = getattr(msg, "retry_num", 0)
+
             # Logging
             self.node.get_logger().info(
-                f"[RelativeExecutor] Δ(x,y,z)=({dx:.3f}, {dy:.3f}, {dz:.3f}) (TCP frame)"
+                f"[RelativeExecutor] Δ(x,y,z)=({dx:.3f}, {dy:.3f}, {dz:.3f}) (TCP frame), retry_num={pose_msg.retry_num}"
             )
 
-            # Execute using PoseExecutor (absolute goal, async if on_complete given)
+            # Execute using PoseExecutor
             return super().execute(
                 pose_msg,
                 vel_scale=vel_scale,
@@ -120,4 +121,3 @@ class RelativeExecutor(PoseExecutor):
             if on_complete:
                 on_complete(False)
             return False
-

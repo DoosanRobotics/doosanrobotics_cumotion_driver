@@ -32,3 +32,4 @@ string name
 # --- Vel, Acc scaling factor ---
 float64 max_vel_scale
 float64 max_acc_scale
+int8 retry_num

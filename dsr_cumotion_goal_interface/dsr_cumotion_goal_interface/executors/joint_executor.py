@@ -43,12 +43,21 @@ class JointExecutor(MoveItExecutorBase):
         self.current_joint_state.position = self.current_joint_positions
         self.current_state.joint_state = self.current_joint_state
 
-    def execute(self, msg, vel_scale=None, acc_scale=None):
+    def execute(self, msg, vel_scale=None, acc_scale=None, on_complete=None):
         """Convert a joint-type TargetPose message into a MotionPlanRequest and send goal."""
 
         # Validate joint input
         if not hasattr(msg, "joints") or len(msg.joints) != 6:
-            self.node.get_logger().error("Expected 6 joint values (degrees)")
+            self.node.get_logger().error("[JointExecutor] Expected 6 joint values (degrees)")
+            if on_complete:
+                on_complete(False)
+            return False
+        
+        # Additional validation: check for NaN/Inf
+        if not all(math.isfinite(j) for j in msg.joints):
+            self.node.get_logger().error("[JointExecutor] Invalid joint values (NaN or Inf)")
+            if on_complete:
+                on_complete(False)
             return False
 
         # Convert degrees to radians and normalize
@@ -72,6 +81,20 @@ class JointExecutor(MoveItExecutorBase):
             vel_scale = self.default_vel_scale
         if acc_scale <= 0.0:
             acc_scale = self.default_acc_scale
+            
+        retry_num = getattr(msg, "retry_num", 0)
+
+        planning_time = float(self.allowed_planning_time)
+        attempts = int(self.num_planning_attempts)
+
+        if retry_num > 0:
+            factor = (math.e ** 2) ** retry_num
+            planning_time *= factor
+            attempts = int(attempts * factor)
+
+        self.node.get_logger().info(
+            f"[JointExecutor] retry_num={retry_num} → planning_time={planning_time:.3f}, attempts={attempts}"
+        )
 
         self.node.get_logger().info(
             f"[JointExecutor] Executing joint move "
@@ -80,12 +103,13 @@ class JointExecutor(MoveItExecutorBase):
 
         # Build MotionPlanRequest
         req = MotionPlanRequest()
-        req.start_state = self.current_state  # Include current joint state as the starting point
+        req.start_state = self.current_state
         req.group_name = self.group_name
         req.pipeline_id = self.pipeline_id
         req.planner_id = self.planner_id
-        req.allowed_planning_time = float(self.allowed_planning_time)
-        req.num_planning_attempts = int(self.num_planning_attempts)
+
+        req.allowed_planning_time = float(planning_time) 
+        req.num_planning_attempts = int(attempts)
         req.max_velocity_scaling_factor = float(vel_scale)
         req.max_acceleration_scaling_factor = float(acc_scale)
 
@@ -93,15 +117,16 @@ class JointExecutor(MoveItExecutorBase):
         constraints = Constraints()
         for i, angle in enumerate(joints_rad):
             jc = JointConstraint()
-            jc.joint_name = f"joint_{i + 1}"      # Target joint name
-            jc.position = angle                   # Desired joint position (radians)
-            jc.tolerance_above = 0.01             # Allowable deviation above target
-            jc.tolerance_below = 0.01             # Allowable deviation below target
-            jc.weight = 1.0                       # Importance weight for this joint
+            jc.joint_name = f"joint_{i + 1}"
+            jc.position = angle
+            jc.tolerance_above = 0.01
+            jc.tolerance_below = 0.01
+            # jc.weight = [0.05, 1.0, 0.05, 1.0, 1.0, 1.0]
+            jc.weight = 1.0
             constraints.joint_constraints.append(jc)
 
         req.goal_constraints = [constraints]
 
         # Build a short description for logging
         description = f"Joint move: {[round(math.degrees(a), 1) for a in joints_rad]}"
-        return self.send_goal(req, description, vel_scale, acc_scale)
+        return self.send_goal(req, description, vel_scale, acc_scale, on_complete=on_complete)

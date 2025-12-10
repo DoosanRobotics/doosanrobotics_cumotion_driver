@@ -33,11 +33,13 @@ class NamedExecutor(MoveItExecutorBase):
         self.default_acc_scale = default_acc_scale
 
     # Main execution entry
-    def execute(self, msg, vel_scale=None, acc_scale=None):
+    def execute(self, msg, vel_scale=None, acc_scale=None, on_complete=None):
         """Execute motion toward a predefined named pose."""
         name = (msg.name or "").upper().strip()
         if not name:
             self.node.get_logger().error("[NamedExecutor] Named move requires a pose name.")
+            if on_complete:
+                on_complete(False)
             return False
 
         # Velocity / acceleration scaling
@@ -97,4 +99,4 @@ class NamedExecutor(MoveItExecutorBase):
 
         # Send goal to MoveGroup Action Server
         description = f"Named move: {name}"
-        return self.send_goal(req, description, vel_scale, acc_scale)
+        return self.send_goal(req, description, vel_scale, acc_scale, on_complete=on_complete)

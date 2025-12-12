@@ -6,6 +6,8 @@ from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Header
 import numpy as np
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+
 
 
 class CameraNode(Node):
@@ -13,8 +15,13 @@ class CameraNode(Node):
         super().__init__('static_depth_camera_node')
     
         # Publishers: send both camera calibration info and depth image frames
-        self.info_pub = self.create_publisher(CameraInfo, '/camera_info', 10)
-        self.depth_pub = self.create_publisher(Image, '/depth', 10)
+        qos = QoSProfile(
+            depth=10,
+            reliability=QoSReliabilityPolicy.RELIABLE
+        )
+
+        self.info_pub  = self.create_publisher(CameraInfo, '/camera_info', qos)
+        self.depth_pub = self.create_publisher(Image, '/depth', qos)
 
         # Timer: publishes data periodically (10 Hz = every 0.1 seconds)
         self.timer = self.create_timer(0.1, self.publish_topics)

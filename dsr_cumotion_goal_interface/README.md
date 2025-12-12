@@ -34,7 +34,7 @@ ros2 topic pub /target_pose dsr_cumotion_msgs/msg/TargetPose "{
 
 ```bash
 ros2 topic pub /target_joint dsr_cumotion_msgs/msg/TargetJoint "{
-  joint_position: [0.0, -90.0, 90.0, 0.0, 90.0, 0.0],
+  joints: [0.0, -90.0, 90.0, 0.0, 90.0, 0.0],
   max_vel_scale: 0.6,
   max_acc_scale: 0.4
 }" --once

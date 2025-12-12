@@ -68,7 +68,7 @@ def add_cumotion(args: lu.ArgumentContainer) -> List[Action]:
                 'cumotion_planner.num_trajopt_time_steps': args.num_trajopt_time_steps,
                 'cumotion_planner.interpolation_dt': '0.025',
                 'cumotion_planner.joint_states_topic': args.joint_states_topic,
-                'cumotion_planner.esdf_service_name': '/nvblox_node/get_esdf_and_gradient',
+                'cumotion_planner.esdf_service_name': '',
                 'cumotion_planner.read_esdf_world': args.read_esdf_world,
                 'cumotion_planner.update_esdf_on_request': 'False',
                 'cumotion_planner.use_aabb_on_request': 'False',
@@ -89,28 +89,28 @@ def add_cumotion(args: lu.ArgumentContainer) -> List[Action]:
             },
         ))
 
-    actions.append(
-        lu.include(
-            'isaac_ros_cumotion',
-            'launch/robot_segmentation.launch.py',
-            launch_arguments={
-                'robot_segmenter.robot': args.robot_file_name,
-                'robot_segmenter.depth_qos': args.qos_setting,
-                'robot_segmenter.depth_info_qos': args.qos_setting,
-                'robot_segmenter.mask_qos': args.qos_setting,
-                'robot_segmenter.world_depth_qos': args.qos_setting,
-                'robot_segmenter.depth_image_topics': depth_image_topics,
-                'robot_segmenter.depth_camera_infos': depth_camera_infos,
-                'robot_segmenter.robot_mask_publish_topics': robot_mask_publish_topics,
-                'robot_segmenter.world_depth_publish_topics': world_depth_publish_topics,
-                'robot_segmenter.filter_speckles_in_mask': filter_speckles_in_robot_mask,
-                'robot_segmenter.max_filtered_speckles_size': max_filtered_speckles_size,
-                'robot_segmenter.distance_threshold': args.distance_threshold,
-                'robot_segmenter.time_sync_slop': args.time_sync_slop,
-                'robot_segmenter.joint_states_topic': args.joint_states_topic,
-                'robot_segmenter.urdf_path': args.urdf_file_path,
-                'robot_segmenter.update_link_sphere_server': args.update_link_sphere_server_segmenter,
-            }))
+    # actions.append(
+    #     lu.include(
+    #         'isaac_ros_cumotion',
+    #         'launch/robot_segmentation.launch.py',
+    #         launch_arguments={
+    #             'robot_segmenter.robot': args.robot_file_name,
+    #             'robot_segmenter.depth_qos': args.qos_setting,
+    #             'robot_segmenter.depth_info_qos': args.qos_setting,
+    #             'robot_segmenter.mask_qos': args.qos_setting,
+    #             'robot_segmenter.world_depth_qos': args.qos_setting,
+    #             'robot_segmenter.depth_image_topics': depth_image_topics,
+    #             'robot_segmenter.depth_camera_infos': depth_camera_infos,
+    #             'robot_segmenter.robot_mask_publish_topics': robot_mask_publish_topics,
+    #             'robot_segmenter.world_depth_publish_topics': world_depth_publish_topics,
+    #             'robot_segmenter.filter_speckles_in_mask': filter_speckles_in_robot_mask,
+    #             'robot_segmenter.max_filtered_speckles_size': max_filtered_speckles_size,
+    #             'robot_segmenter.distance_threshold': args.distance_threshold,
+    #             'robot_segmenter.time_sync_slop': args.time_sync_slop,
+    #             'robot_segmenter.joint_states_topic': args.joint_states_topic,
+    #             'robot_segmenter.urdf_path': args.urdf_file_path,
+    #             'robot_segmenter.update_link_sphere_server': args.update_link_sphere_server_segmenter,
+    #         }))
 
     if enable_object_attachment:
         actions.append(
@@ -123,7 +123,7 @@ def add_cumotion(args: lu.ArgumentContainer) -> List[Action]:
                     'object_attachment.time_sync_slop': args.time_sync_slop,
                     'object_attachment.filter_depth_buffer_time': args.filter_depth_buffer_time,
                     'object_attachment.joint_states_topic': args.joint_states_topic,
-                    'object_attachment.depth_image_topics': world_depth_publish_topics,
+                    'object_attachment.depth_image_topics': depth_image_topics,
                     'object_attachment.depth_camera_infos': depth_camera_infos,
                     'object_attachment.object_link_name': args.object_link_name,
                     'object_attachment.action_names': args.action_names,
@@ -171,14 +171,14 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('search_radius', cli=True, default='0.1')
     args.add_arg('update_link_sphere_server_segmenter', cli=True, default='segmenter_attach_object')
     args.add_arg('clustering_bypass', cli=True, default='True')
-    args.add_arg('action_names', cli=True, default="['segmenter_attach_object', 'planner_attach_object']")
+    args.add_arg('action_names', cli=True, default="['planner_attach_object']")
     args.add_arg('clustering_hdbscan_min_samples', cli=True, default='20')
     args.add_arg('clustering_hdbscan_min_cluster_size', cli=True, default='30')
     args.add_arg('clustering_hdbscan_cluster_selection_epsilon', cli=True, default='0.5')
     args.add_arg('clustering_num_top_clusters_to_select', cli=True, default='3')
     args.add_arg('clustering_group_clusters', cli=True, default='False')
     args.add_arg('clustering_min_points', cli=True, default='100')
-    args.add_arg('publish_curobo_world_as_voxels', cli=True, default='True')
+    args.add_arg('publish_curobo_world_as_voxels', cli=True, default='False')
     args.add_arg('qos_setting', cli=True, default='SENSOR_DATA')
     args.add_arg('surface_sphere_radius', cli=True, default='0.01')
     args.add_arg('object_esdf_clearing_padding', cli=True, default='[0.025, 0.025, 0.025]')

@@ -23,11 +23,10 @@ find_package(isaac_ros_common REQUIRED)
 
 # Python executables
 install(PROGRAMS
-  launch/include/move_to_pose.py
   launch/include/camera_publisher.py
+  launch/include/cumotion.launch.py
   launch/include/obstacle_manager.py
   launch/include/pick_and_place_server.py
-
   DESTINATION lib/${PROJECT_NAME}
 )
 

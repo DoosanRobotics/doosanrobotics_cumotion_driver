@@ -63,6 +63,7 @@
   <!-- Robotiq 2F-85 Collision -->
   <xacro:if value="${gripper == '2f85'}">
     <xacro:include filename="$(find dsr_cumotion)/srdf/robotiq_2f_85.srdf.xacro"/>
+    <xacro:robotiq_2f85_srdf name="robotiq_2f85" prefix=""/>
 
     <disable_collisions link1="robotiq_85_base_link" link2="link_5" reason="Never"/>
     <disable_collisions link1="robotiq_85_base_link" link2="link_6" reason="Adjacent"/>

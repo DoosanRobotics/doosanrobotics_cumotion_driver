@@ -1,19 +1,22 @@
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup  # [MOD] Prevent Action waitable race
 from moveit_msgs.action import MoveGroup
-from moveit_msgs.msg import MotionPlanRequest, MoveItErrorCodes
+from moveit_msgs.msg import MoveItErrorCodes
+import threading
 
 
 class MoveItExecutorBase:
-    """Simplified base class for MoveGroup action communication (cleaned, minimal logging)."""
 
+    # Initialize ActionClient with thread-safe goal management
     def __init__(
-        self, node: Node,
+        self,
+        node: Node,
         group_name="manipulator",
         pipeline_id="isaac_ros_cumotion",
         base_frame="base_link",
-        tool_frame="grasp_frame"
+        tool_frame="grasp_frame",
     ):
         self.node = node
         self.group_name = group_name
@@ -21,88 +24,195 @@ class MoveItExecutorBase:
         self.base_frame = base_frame
         self.tool_frame = tool_frame
 
-        self.client = ActionClient(node, MoveGroup, "move_action")
-        self.current_goal_handle = None
+        self.cb_group = ReentrantCallbackGroup()  # [MOD] Dedicated Reentrant callback group for Action
+        self.client = ActionClient(
+            node,
+            MoveGroup,
+            "move_action",
+            callback_group=self.cb_group,          # [MOD] Enable concurrent safe waitable execution
+        )
 
-    # Internal: Reset and wait helpers
-    def _reset_state(self):
-        """Cancel any existing goal before sending a new one."""
-        if self.current_goal_handle:
+        self.current_goal_handle = None
+        self._goal_lock = threading.Lock()
+
+    # Wait for the MoveGroup action server with retry attempts
+    def _wait_for_server(self, timeout_sec=5.0, retry_count=3) -> bool:
+        for attempt in range(retry_count):
+            if self.client.wait_for_server(timeout_sec=timeout_sec):
+                return True
+            self.node.get_logger().warn(
+                f"[Executor] MoveGroup server not available "
+                f"(attempt {attempt + 1}/{retry_count})"
+            )
+
+        self.node.get_logger().error(
+            "[Executor] MoveGroup server unavailable. "
+            "Please ensure move_group node is running."
+        )
+        return False
+
+    # Cancel the currently active goal if one exists
+    def cancel_current_goal(self):
+        with self._goal_lock:
+            goal_to_cancel = self.current_goal_handle
+            self.current_goal_handle = None
+
+        if goal_to_cancel is not None:
             try:
-                cancel_future = self.current_goal_handle.cancel_goal_async()
-                cancel_future.add_done_callback(lambda _: self.node.get_logger().info("[Executor] Previous goal canceled."))
+                self.node.get_logger().info("[Executor] Canceling current goal...")
+                cancel_future = goal_to_cancel.cancel_goal_async()
+                cancel_future.add_done_callback(self._on_cancel_done)
             except Exception as e:
-                self.node.get_logger().warn(f"[Executor] Cancel goal failed: {e}")
-        self.current_goal_handle = None
+                self.node.get_logger().error(f"[Executor] Cancel error: {e}")
 
-    def _wait_for_server(self) -> bool:
-        """Ensure MoveGroup action server is available."""
-        if not self.client.wait_for_server(timeout_sec=5.0):
-            self.node.get_logger().error("[Executor] MoveGroup server not available (timeout 5s).")
-            return False
+    # Handle the cancellation result from the action server
+    def _on_cancel_done(self, future):
+        try:
+            cancel_response = future.result()
+            if len(cancel_response.goals_canceling) > 0:
+                self.node.get_logger().info("[Executor] Goal canceled successfully.")
+            else:
+                self.node.get_logger().warn("[Executor] Goal cancellation failed.")
+        except Exception as e:
+            self.node.get_logger().error(f"[Executor] Cancel callback error: {e}")
+
+    # Send a new goal after safely canceling any existing goal
+    def send_goal(self, request, description: str,
+                  vel_scale=None, acc_scale=None,
+                  on_complete=None, cancel_previous=True):
+
+        # [MOD] Enforce strict serialization: send a goal only after cancel completes
+        def _send_after_cancel():
+            if not self._wait_for_server():
+                if on_complete:
+                    on_complete(False)
+                return
+
+            try:
+                goal_msg = MoveGroup.Goal()
+                goal_msg.request = request
+
+                info = f"(vel={vel_scale or 'default'}, acc={acc_scale or 'default'})"
+                self.node.get_logger().info(
+                    f"[Executor] Sending goal: {description} {info}"
+                )
+
+                send_future = self.client.send_goal_async(
+                    goal_msg, feedback_callback=self._on_feedback
+                )
+                send_future.add_done_callback(
+                    lambda f: self._on_goal_response_async(f, description, on_complete)
+                )
+
+            except Exception as e:
+                self.node.get_logger().error(f"[Executor] Failed to send goal: {e}")
+                if on_complete:
+                    on_complete(False)
+
+        with self._goal_lock:
+            if self.current_goal_handle is not None:
+                if cancel_previous:
+                    self.node.get_logger().warn(
+                        "[Executor] Canceling previous goal before sending a new one."
+                    )
+                    goal_to_cancel = self.current_goal_handle
+                else:
+                    self.node.get_logger().warn(
+                        "[Executor] Previous goal is still active. Rejecting new goal."
+                    )
+                    return False
+            else:
+                goal_to_cancel = None
+
+        if goal_to_cancel is not None:
+            try:
+                cancel_future = goal_to_cancel.cancel_goal_async()
+
+                # [MOD] Trigger new goal only after cancel completion
+                def _after_cancel(_):
+                    self.node.get_logger().info("[Executor] Previous goal canceled.")
+                    _send_after_cancel()
+
+                cancel_future.add_done_callback(_after_cancel)  # [MOD] Cancel-to-send chaining
+
+            except Exception as e:
+                self.node.get_logger().error(f"[Executor] Cancel error: {e}")
+                _send_after_cancel()
+        else:
+            _send_after_cancel()
+
         return True
 
-    # Public: Goal sending
-    def send_goal(self, request: MotionPlanRequest, description: str, vel_scale=None, acc_scale=None):
-        """Send a motion planning request to MoveGroup action server."""
-        self._reset_state()
-        if not self._wait_for_server():
-            return False
-
-        goal_msg = MoveGroup.Goal()
-        goal_msg.request = request
-
-        info = f"(vel={vel_scale or 'default'}, acc={acc_scale or 'default'})"
-        self.node.get_logger().info(f"[Executor] Sending goal: {description} {info}")
-
-        future = self.client.send_goal_async(goal_msg, feedback_callback=self._on_feedback)
-        future.add_done_callback(lambda f: self._on_goal_response(f, description))
-        return True
-
-    # Internal callbacks
-    def _on_goal_response(self, future, description: str):
+    # Process goal acceptance or rejection from the action server
+    def _on_goal_response_async(self, future, description: str, on_complete=None):
         try:
             goal_handle = future.result()
             if not goal_handle.accepted:
                 self.node.get_logger().warn(f"[Executor] Goal rejected: {description}")
+                if on_complete:
+                    on_complete(False)
                 return
 
-            self.current_goal_handle = goal_handle
+            with self._goal_lock:
+                self.current_goal_handle = goal_handle
+
             self.node.get_logger().info(f"[Executor] Goal accepted: {description}")
 
             result_future = goal_handle.get_result_async()
-            result_future.add_done_callback(lambda f: self._on_result(f, description))
+            result_future.add_done_callback(
+                lambda f: self._on_result_async(f, description, on_complete)
+            )
 
         except Exception as e:
             self.node.get_logger().error(f"[Executor] Goal response error: {e}")
+            if on_complete:
+                on_complete(False)
 
+    # Handle real-time feedback from the action server
     def _on_feedback(self, feedback_msg):
-        """Handle planning/execution feedback from MoveGroup."""
         fb = feedback_msg.feedback
         state = getattr(fb, "state", None)
         if state:
             self.node.get_logger().info(f"[Feedback] {state}")
 
-    def _on_result(self, future, description: str):
-        """Handle final result from MoveGroup."""
+    # Handle the final execution result from the action server
+    def _on_result_async(self, future, description: str, on_complete=None):
+        success = False
         try:
             result = future.result().result
             code = result.error_code.val
             code_name = self._error_code_name(code)
 
             if code == MoveItErrorCodes.SUCCESS:
-                self.node.get_logger().info(f"[Result] SUCCESS: {description} ({code_name})")
+                self.node.get_logger().info(
+                    f"[Result] SUCCESS: {description} ({code_name})"
+                )
+                success = True
             else:
-                self.node.get_logger().warn(f"[Result] FAILED: {description} ({code_name}, code={code})")
+                self.node.get_logger().warn(
+                    f"[Result] FAILED: {description} ({code_name}, code={code})"
+                )
 
         except Exception as e:
-            self.node.get_logger().error(f"[Result] Exception while handling result: {e}")
+            self.node.get_logger().error(
+                f"[Result] Exception while handling result: {e}"
+            )
 
         finally:
-            self.current_goal_handle = None
+            with self._goal_lock:
+                self.current_goal_handle = None
+
             self.node.get_logger().info("[Executor] Ready for next goal.")
 
-    # Static utility
+            if on_complete:
+                try:
+                    on_complete(success)
+                except Exception as e:
+                    self.node.get_logger().error(
+                        f"[Result] Error in on_complete callback: {e}"
+                    )
+
+    # Convert MoveIt error code to a human-readable name
     @staticmethod
     def _error_code_name(code: int) -> str:
         mapping = {

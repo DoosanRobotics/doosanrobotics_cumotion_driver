@@ -152,7 +152,7 @@ Before running it, ensure that the necessary Dockerfiles and scripts from the Do
 
 ```bash
 # 1. Navigate to Doosan custom Docker assets
-cd ~/ros2_ws/src/cumotion/dsr_cumotion/docker
+cd ~/ros2_ws/src/doosanrobotics_cumotion_driver/dsr_cumotion/docker
 
 # 2. Grant permission and execute startup script
 chmod +x startup-doosan.sh

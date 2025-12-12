@@ -68,7 +68,7 @@ def add_cumotion(args: lu.ArgumentContainer) -> List[Action]:
                 'cumotion_planner.num_trajopt_time_steps': args.num_trajopt_time_steps,
                 'cumotion_planner.interpolation_dt': '0.025',
                 'cumotion_planner.joint_states_topic': args.joint_states_topic,
-                'cumotion_planner.esdf_service_name': '/nvblox_node/get_esdf_and_gradient',
+                'cumotion_planner.esdf_service_name': '',
                 'cumotion_planner.read_esdf_world': args.read_esdf_world,
                 'cumotion_planner.update_esdf_on_request': 'False',
                 'cumotion_planner.use_aabb_on_request': 'False',
@@ -178,7 +178,7 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('clustering_num_top_clusters_to_select', cli=True, default='3')
     args.add_arg('clustering_group_clusters', cli=True, default='False')
     args.add_arg('clustering_min_points', cli=True, default='100')
-    args.add_arg('publish_curobo_world_as_voxels', cli=True, default='True')
+    args.add_arg('publish_curobo_world_as_voxels', cli=True, default='False')
     args.add_arg('qos_setting', cli=True, default='SENSOR_DATA')
     args.add_arg('surface_sphere_radius', cli=True, default='0.01')
     args.add_arg('object_esdf_clearing_padding', cli=True, default='[0.025, 0.025, 0.025]')

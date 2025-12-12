@@ -29,9 +29,8 @@ def get_moveit_group_node(context):
     use_sim_time = str(LaunchConfiguration("use_sim_time").perform(context)).lower()
     gripper = str(LaunchConfiguration("gripper").perform(context)).lower()
     pkg_share = get_package_share_directory("dsr_cumotion")
-    enable_cumotion = (str(LaunchConfiguration("enable_cumotion").perform(context)).strip().lower()== "true"
-                       
-)    # File paths
+    enable_cumotion = (str(LaunchConfiguration("enable_cumotion").perform(context)).strip().lower()== "true")    
+    # File paths
     controller_file = os.path.join(pkg_share, "config", "moveit_controllers.yaml")
     kinematics_file = os.path.join(pkg_share, "config", "kinematics.yaml")
     urdf_path = os.path.join(pkg_share, "urdf", f"{model}.urdf.xacro")
@@ -97,7 +96,6 @@ def get_moveit_group_node(context):
         executable="move_group",
         output="log",
         parameters=[moveit_dict],
-        arguments=["--ros-args", "--log-level", "info"],
     )
     nodes = [move_group_node]
 

@@ -91,8 +91,8 @@ git clone -b jetson_thor https://github.com/DoosanRobotics/doosanrobotics_cumoti
 ### 7.1 Copying the `docker/` and `scripts/` Directories
 
 ```bash
-cp -r ~/ros2_ws/src/cumotion/docker   ~/workspaces/
-cp -r ~/ros2_ws/src/cumotion/scripts ~/workspaces/
+cp -r ~/ros2_ws/src/doosanrobotics_cumotion_driver/docker   ~/workspaces/
+cp -r ~/ros2_ws/src/doosanrobotics_cumotion_driver/scripts ~/workspaces/
 ```
 
 ### 7.2 Expected Directory Structure
